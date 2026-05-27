@@ -15,7 +15,7 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [clips, setClips] = useState<RenderedClip[]>([]);
   const [cropMode, setCropMode] =
-  useState<"center" | "left" | "right">("center");
+  useState<"center" | "left" | "right" | "auto">("center");
 
   async function generateClips() {
     if (!file) {
@@ -87,7 +87,11 @@ export default function HomePage() {
           body: renderForm
         });
 
-        if (!renderRes.ok) throw new Error((await renderRes.json()).error || "Rendering failed.");
+        if (!renderRes.ok) {
+  const errorText = await renderRes.text();
+  console.error("RENDER_RESPONSE_TEXT", errorText);
+  throw new Error("Rendering failed. Check the terminal for the real backend error.");
+}
 
         const blob = await renderRes.blob();
         rendered.push({
@@ -155,6 +159,7 @@ export default function HomePage() {
     }
     className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3"
   >
+    <option value="auto">Auto detect speaker</option>
     <option value="center">Center speaker</option>
     <option value="left">Left speaker</option>
     <option value="right">Right speaker</option>
