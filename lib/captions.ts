@@ -1,5 +1,10 @@
 import type { WordTimestamp } from "./types";
 
+export type CaptionStyle =
+  | "classic"
+  | "bold-white"
+  | "yellow-highlight";
+
 function escapeAssText(text: string) {
   return text
     .replace(/\\/g, "\\\\")
@@ -10,15 +15,15 @@ function escapeAssText(text: string) {
 
 function assTime(seconds: number) {
   const cs = Math.max(0, Math.round(seconds * 100));
+
   const h = Math.floor(cs / 360000);
   const m = Math.floor((cs % 360000) / 6000);
   const s = Math.floor((cs % 6000) / 100);
   const c = cs % 100;
 
-  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(
-    2,
-    "0"
-  )}.${String(c).padStart(2, "0")}`;
+  return `${h}:${String(m).padStart(2, "0")}:${String(
+    s
+  ).padStart(2, "0")}.${String(c).padStart(2, "0")}`;
 }
 
 export function wordsForClip(
@@ -39,7 +44,12 @@ export function groupWordsIntoCaptionLines(
   words: WordTimestamp[],
   maxWords = 4
 ) {
-  const lines: { words: WordTimestamp[]; start: number; end: number }[] = [];
+  const lines: {
+    words: WordTimestamp[];
+    start: number;
+    end: number;
+  }[] = [];
+
   let buffer: WordTimestamp[] = [];
 
   const flush = () => {
@@ -71,29 +81,48 @@ export function groupWordsIntoCaptionLines(
   return lines;
 }
 
-function createHighlightedCaptionLine(lineWords: WordTimestamp[]) {
-  const parts: string[] = [];
+function captionText(
+  lineWords: WordTimestamp[],
+  style: CaptionStyle
+) {
+  const words = lineWords.map((word) =>
+    escapeAssText(word.word.toUpperCase())
+  );
 
-  for (const word of lineWords) {
-    const cleanWord = escapeAssText(word.word.toUpperCase());
-
-    parts.push(
-      `{\\c&H00E5FF&\\fs92\\bord7}${cleanWord}{\\c&HFFFFFF&\\fs78\\bord6}`
-    );
+  if (style === "yellow-highlight") {
+    return words
+      .map(
+        (word) =>
+          `{\\c&H00E5FF&\\fs92\\bord8\\shad3}${word}{\\c&HFFFFFF&\\fs80\\bord7\\shad3}`
+      )
+      .join(" ");
   }
 
-  return parts.join(" ");
+  return words.join(" ");
+}
+
+function styleLine(style: CaptionStyle) {
+  if (style === "classic") {
+    return "Style: Default,Arial,72,&H00FFFFFF,&H0000FFFF,&H00000000,&H99000000,-1,0,0,0,100,100,0,0,1,5,2,2,80,80,230,1";
+  }
+
+  if (style === "bold-white") {
+    return "Style: Default,Arial,88,&H00FFFFFF,&H0000FFFF,&H00000000,&H99000000,-1,0,0,0,100,100,1,0,1,8,3,2,70,70,260,1";
+  }
+
+  return "Style: Default,Arial,80,&H00FFFFFF,&H0000FFFF,&H00000000,&H99000000,-1,0,0,0,100,100,1,0,1,7,3,2,70,70,260,1";
 }
 
 export function createAssSubtitles(
   words: WordTimestamp[],
-  title = "Podcast Clip"
+  title = "Podcast Clip",
+  style: CaptionStyle = "yellow-highlight"
 ) {
-  const lines = groupWordsIntoCaptionLines(words);
+  const lines = groupWordsIntoCaptionLines(words, 4);
 
   const events = lines
     .map((line) => {
-      const text = createHighlightedCaptionLine(line.words);
+      const text = captionText(line.words, style);
 
       return `Dialogue: 0,${assTime(line.start)},${assTime(
         line.end
@@ -108,10 +137,11 @@ PlayResX: 1080
 PlayResY: 1920
 WrapStyle: 2
 ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.709
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,Arial,78,&H00FFFFFF,&H0000FFFF,&H00000000,&H99000000,-1,0,0,0,100,100,1,0,1,6,3,2,80,80,260,1
+${styleLine(style)}
 
 [Events]
 Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text

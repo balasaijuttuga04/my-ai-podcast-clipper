@@ -9,6 +9,7 @@ import {
 } from "@/lib/ffmpeg";
 
 import type { CropMode } from "@/lib/ffmpeg";
+import type { CaptionStyle } from "@/lib/captions";
 import type { WordTimestamp } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -27,7 +28,20 @@ export async function POST(req: NextRequest) {
 
     const cropModeRaw = String(formData.get("cropMode") || "center");
     const cropMode: CropMode =
-      cropModeRaw === "left" || cropModeRaw === "right" ? cropModeRaw : "center";
+      cropModeRaw === "left" || cropModeRaw === "right"
+        ? cropModeRaw
+        : "center";
+
+    const captionStyleRaw = String(
+      formData.get("captionStyle") || "yellow-highlight"
+    );
+
+    const captionStyle: CaptionStyle =
+      captionStyleRaw === "classic" ||
+      captionStyleRaw === "bold-white" ||
+      captionStyleRaw === "yellow-highlight"
+        ? captionStyleRaw
+        : "yellow-highlight";
 
     if (!(file instanceof File)) {
       return NextResponse.json(
@@ -52,7 +66,8 @@ export async function POST(req: NextRequest) {
       words,
       start,
       end,
-      title
+      title,
+      captionStyle
     });
 
     const outputPath = path.join(dir, "clip.mp4");

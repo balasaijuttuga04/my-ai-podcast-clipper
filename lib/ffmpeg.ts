@@ -1,25 +1,47 @@
-export type CropMode = "center" | "left" | "right";
-
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import ffprobeInstaller from "@ffprobe-installer/ffprobe";
 import ffmpeg from "fluent-ffmpeg";
+
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import os from "os";
+
 import type { WordTimestamp } from "./types";
-import { createAssSubtitles, wordsForClip } from "./captions";
+
+import {
+  createAssSubtitles,
+  wordsForClip,
+  type CaptionStyle
+} from "./captions";
+
+export type CropMode = "center" | "left" | "right";
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 ffmpeg.setFfprobePath(ffprobeInstaller.path);
 
-export async function writeUploadToTemp(file: File, prefix = "upload") {
-  const dir = path.join(os.tmpdir(), "ai-podcast-clipper", randomUUID());
+export async function writeUploadToTemp(
+  file: File,
+  prefix = "upload"
+) {
+  const dir = path.join(
+    os.tmpdir(),
+    "ai-podcast-clipper",
+    randomUUID()
+  );
+
   await mkdir(dir, { recursive: true });
 
   const ext = extensionForFile(file);
-  const inputPath = path.join(dir, `${prefix}${ext}`);
-  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const inputPath = path.join(
+    dir,
+    `${prefix}${ext}`
+  );
+
+  const buffer = Buffer.from(
+    await file.arrayBuffer()
+  );
 
   await writeFile(inputPath, buffer);
 
@@ -27,9 +49,12 @@ export async function writeUploadToTemp(file: File, prefix = "upload") {
 }
 
 function extensionForFile(file: File) {
-  const nameExt = path.extname(file.name || "").toLowerCase();
+  const nameExt = path.extname(
+    file.name || ""
+  ).toLowerCase();
 
   if (nameExt) return nameExt;
+
   if (file.type.includes("mp4")) return ".mp4";
   if (file.type.includes("mpeg")) return ".mp3";
   if (file.type.includes("mp3")) return ".mp3";
@@ -39,13 +64,19 @@ function extensionForFile(file: File) {
   return ".bin";
 }
 
-export function extractAudio(inputPath: string, outputPath: string) {
+export function extractAudio(
+  inputPath: string,
+  outputPath: string
+) {
   return new Promise<void>((resolve, reject) => {
     ffmpeg(inputPath)
       .noVideo()
       .audioCodec("libmp3lame")
       .audioBitrate("96k")
-      .outputOptions(["-ar 16000", "-ac 1"])
+      .outputOptions([
+        "-ar 16000",
+        "-ac 1"
+      ])
       .save(outputPath)
       .on("end", () => resolve())
       .on("error", reject);
@@ -93,13 +124,20 @@ export function renderClip(params: {
       ? "iw-1080"
       : "(iw-1080)/2";
 
-  const duration = Math.max(1, end - start);
+  const duration = Math.max(
+    1,
+    end - start
+  );
 
   return new Promise<void>((resolve, reject) => {
     const command = isVideo
-      ? ffmpeg(inputPath).seekInput(start).duration(duration)
+      ? ffmpeg(inputPath)
+          .seekInput(start)
+          .duration(duration)
       : ffmpeg()
-          .input("color=c=0x111827:s=1080x1920:r=30")
+          .input(
+            "color=c=0x111827:s=1080x1920:r=30"
+          )
           .inputOptions(["-f lavfi"])
           .input(inputPath)
           .seekInput(start)
@@ -154,12 +192,30 @@ export async function createSubtitleFile(params: {
   start: number;
   end: number;
   title: string;
+  captionStyle?: CaptionStyle;
 }) {
-  const clipWords = wordsForClip(params.words, params.start, params.end);
-  const ass = createAssSubtitles(clipWords, params.title);
-  const subtitlePath = path.join(params.dir, `captions-${randomUUID()}.ass`);
+  const clipWords = wordsForClip(
+    params.words,
+    params.start,
+    params.end
+  );
 
-  await writeFile(subtitlePath, ass, "utf8");
+  const ass = createAssSubtitles(
+    clipWords,
+    params.title,
+    params.captionStyle || "yellow-highlight"
+  );
+
+  const subtitlePath = path.join(
+    params.dir,
+    `captions-${randomUUID()}.ass`
+  );
+
+  await writeFile(
+    subtitlePath,
+    ass,
+    "utf8"
+  );
 
   return subtitlePath;
 }
