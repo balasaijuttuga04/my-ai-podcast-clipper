@@ -16,6 +16,7 @@ import { Sparkles } from "lucide-react";
 
 type CropMode = "center" | "left" | "right" | "auto";
 type CaptionStyle = "classic" | "bold-white" | "yellow-highlight";
+type LayoutMode = "normal" | "split-screen";
 
 export default function HomePage() {
   const [file, setFile] = useState<File | null>(null);
@@ -26,11 +27,8 @@ export default function HomePage() {
   const [clips, setClips] = useState<RenderedClip[]>([]);
   const [cropMode, setCropMode] = useState<CropMode>("center");
   const [captionStyle, setCaptionStyle] =
-  useState<"classic" | "bold-white" | "yellow-highlight">(
-    "yellow-highlight"
-  );
-  const [captionStyle, setCaptionStyle] =
     useState<CaptionStyle>("yellow-highlight");
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("normal");
 
   async function generateClips() {
     if (!file) {
@@ -48,15 +46,15 @@ export default function HomePage() {
       transcribeForm.append("file", file);
 
       setStep("transcribing");
+
       const transcriptionRes = await fetch("/api/transcribe", {
         method: "POST",
         body: transcribeForm
       });
 
       if (!transcriptionRes.ok) {
-        throw new Error(
-          (await transcriptionRes.json()).error || "Transcription failed."
-        );
+        const errorData = await transcriptionRes.json().catch(() => null);
+        throw new Error(errorData?.error || "Transcription failed.");
       }
 
       const transcription = (await transcriptionRes.json()) as {
@@ -75,7 +73,9 @@ export default function HomePage() {
 
       const highlightsRes = await fetch("/api/detect-highlights", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
           transcript: transcription.text,
           segments: transcription.segments,
@@ -85,9 +85,8 @@ export default function HomePage() {
       });
 
       if (!highlightsRes.ok) {
-        throw new Error(
-          (await highlightsRes.json()).error || "Highlight detection failed."
-        );
+        const errorData = await highlightsRes.json().catch(() => null);
+        throw new Error(errorData?.error || "Highlight detection failed.");
       }
 
       const { highlights } = (await highlightsRes.json()) as {
@@ -117,6 +116,7 @@ export default function HomePage() {
         renderForm.append("words", JSON.stringify(transcription.words));
         renderForm.append("cropMode", cropMode);
         renderForm.append("captionStyle", captionStyle);
+        renderForm.append("layoutMode", layoutMode);
 
         const renderRes = await fetch("/api/render-clip", {
           method: "POST",
@@ -126,6 +126,7 @@ export default function HomePage() {
         if (!renderRes.ok) {
           const errorText = await renderRes.text();
           console.error("RENDER_RESPONSE_TEXT", errorText);
+
           throw new Error(
             "Rendering failed. Check the terminal for the real backend error."
           );
@@ -187,6 +188,7 @@ export default function HomePage() {
                   <span className="text-sm text-slate-300">
                     Preferred clip length
                   </span>
+
                   <select
                     value={clipLength}
                     onChange={(e) =>
@@ -204,6 +206,7 @@ export default function HomePage() {
                   <span className="text-sm text-slate-300">
                     Number of clips
                   </span>
+
                   <select
                     value={numberOfClips}
                     onChange={(e) =>
@@ -223,6 +226,7 @@ export default function HomePage() {
                   <span className="text-sm text-slate-300">
                     Smart crop focus
                   </span>
+
                   <select
                     value={cropMode}
                     onChange={(e) =>
@@ -241,6 +245,7 @@ export default function HomePage() {
                   <span className="text-sm text-slate-300">
                     Caption style
                   </span>
+
                   <select
                     value={captionStyle}
                     onChange={(e) =>
@@ -255,14 +260,35 @@ export default function HomePage() {
                     </option>
                   </select>
                 </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="text-sm text-slate-300">
+                    Layout style
+                  </span>
+
+                  <select
+                    value={layoutMode}
+                    onChange={(e) =>
+                      setLayoutMode(e.target.value as LayoutMode)
+                    }
+                    className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3"
+                  >
+                    <option value="normal">Normal vertical</option>
+                    <option value="split-screen">
+                      Split screen gameplay
+                    </option>
+                  </select>
+                </label>
               </div>
 
               <button
                 onClick={generateClips}
                 disabled={
                   !file ||
+                  step === "uploading" ||
                   step === "transcribing" ||
                   step === "analyzing" ||
+                  step === "clipping" ||
                   step === "rendering"
                 }
                 className="mt-6 w-full rounded-2xl bg-cyan-400 px-5 py-4 font-bold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
@@ -283,6 +309,7 @@ export default function HomePage() {
 
             <div className="rounded-3xl bg-slate-900/70 p-5 text-sm text-slate-300">
               <p className="font-semibold text-white">How it works</p>
+
               <p className="mt-2">
                 Word-level timestamps attach start/end seconds to each word.
                 The renderer groups those words into short subtitle lines,

@@ -44,73 +44,52 @@ export function groupWordsIntoCaptionLines(
   words: WordTimestamp[],
   maxWords = 4
 ) {
-  const lines: {
-    words: WordTimestamp[];
-    start: number;
-    end: number;
-  }[] = [];
+  const groups: WordTimestamp[][] = [];
 
-  let buffer: WordTimestamp[] = [];
-
-  const flush = () => {
-    if (!buffer.length) return;
-
-    lines.push({
-      words: [...buffer],
-      start: buffer[0].start,
-      end: buffer[buffer.length - 1].end
-    });
-
-    buffer = [];
-  };
+  let current: WordTimestamp[] = [];
 
   for (const word of words) {
-    const gap = buffer.length
-      ? word.start - buffer[buffer.length - 1].end
-      : 0;
+    const prev = current[current.length - 1];
 
-    if (buffer.length >= maxWords || gap > 0.65) {
-      flush();
+    const gap = prev ? word.start - prev.end : 0;
+
+    if (current.length >= maxWords || gap > 0.7) {
+      groups.push(current);
+      current = [];
     }
 
-    buffer.push(word);
+    current.push(word);
   }
 
-  flush();
-
-  return lines;
-}
-
-function captionText(
-  lineWords: WordTimestamp[],
-  style: CaptionStyle
-) {
-  const words = lineWords.map((word) =>
-    escapeAssText(word.word.toUpperCase())
-  );
-
-  if (style === "yellow-highlight") {
-    return words
-      .map(
-        (word) =>
-          `{\\c&H00E5FF&\\fs92\\bord8\\shad3}${word}{\\c&HFFFFFF&\\fs80\\bord7\\shad3}`
-      )
-      .join(" ");
+  if (current.length) {
+    groups.push(current);
   }
 
-  return words.join(" ");
+  return groups;
 }
 
-function styleLine(style: CaptionStyle) {
+function getStyle(style: CaptionStyle) {
   if (style === "classic") {
-    return "Style: Default,Arial,72,&H00FFFFFF,&H0000FFFF,&H00000000,&H99000000,-1,0,0,0,100,100,0,0,1,5,2,2,80,80,230,1";
+    return {
+      fontSize: 72,
+      outline: 4,
+      shadow: 2
+    };
   }
 
   if (style === "bold-white") {
-    return "Style: Default,Arial,88,&H00FFFFFF,&H0000FFFF,&H00000000,&H99000000,-1,0,0,0,100,100,1,0,1,8,3,2,70,70,260,1";
+    return {
+      fontSize: 84,
+      outline: 6,
+      shadow: 3
+    };
   }
 
-  return "Style: Default,Arial,80,&H00FFFFFF,&H0000FFFF,&H00000000,&H99000000,-1,0,0,0,100,100,1,0,1,7,3,2,70,70,260,1";
+  return {
+    fontSize: 80,
+    outline: 5,
+    shadow: 3
+  };
 }
 
 export function createAssSubtitles(
@@ -118,17 +97,37 @@ export function createAssSubtitles(
   title = "Podcast Clip",
   style: CaptionStyle = "yellow-highlight"
 ) {
-  const lines = groupWordsIntoCaptionLines(words, 4);
+  const groups = groupWordsIntoCaptionLines(words);
 
-  const events = lines
-    .map((line) => {
-      const text = captionText(line.words, style);
+  const styleConfig = getStyle(style);
 
-      return `Dialogue: 0,${assTime(line.start)},${assTime(
-        line.end
-      )},Default,,0,0,0,,${text}`;
-    })
-    .join("\n");
+  const events: string[] = [];
+
+  for (const group of groups) {
+    for (let activeIndex = 0; activeIndex < group.length; activeIndex++) {
+      const activeWord = group[activeIndex];
+
+      const line = group
+        .map((word, index) => {
+          const clean = escapeAssText(word.word.toUpperCase());
+
+          if (index === activeIndex) {
+            return `{\\c&H00E5FF&\\fs${
+              styleConfig.fontSize + 12
+            }\\bord${styleConfig.outline + 2}}${clean}`;
+          }
+
+          return `{\\c&HFFFFFF&\\fs${styleConfig.fontSize}\\bord${styleConfig.outline}}${clean}`;
+        })
+        .join(" ");
+
+      events.push(
+        `Dialogue: 0,${assTime(activeWord.start)},${assTime(
+          activeWord.end
+        )},Default,,0,0,0,,${line}`
+      );
+    }
+  }
 
   return `[Script Info]
 Title: ${escapeAssText(title)}
@@ -137,14 +136,14 @@ PlayResX: 1080
 PlayResY: 1920
 WrapStyle: 2
 ScaledBorderAndShadow: yes
-YCbCr Matrix: TV.709
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-${styleLine(style)}
+
+Style: Default,Arial,${styleConfig.fontSize},&H00FFFFFF,&H0000FFFF,&H00000000,&H99000000,-1,0,0,0,100,100,0,0,1,${styleConfig.outline},${styleConfig.shadow},2,80,80,220,1
 
 [Events]
 Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
-${events}
+${events.join("\n")}
 `;
 }

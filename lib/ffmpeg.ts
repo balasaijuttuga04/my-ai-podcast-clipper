@@ -16,32 +16,18 @@ import {
 } from "./captions";
 
 export type CropMode = "center" | "left" | "right";
+export type LayoutMode = "normal" | "split-screen";
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 ffmpeg.setFfprobePath(ffprobeInstaller.path);
 
-export async function writeUploadToTemp(
-  file: File,
-  prefix = "upload"
-) {
-  const dir = path.join(
-    os.tmpdir(),
-    "ai-podcast-clipper",
-    randomUUID()
-  );
-
+export async function writeUploadToTemp(file: File, prefix = "upload") {
+  const dir = path.join(os.tmpdir(), "ai-podcast-clipper", randomUUID());
   await mkdir(dir, { recursive: true });
 
   const ext = extensionForFile(file);
-
-  const inputPath = path.join(
-    dir,
-    `${prefix}${ext}`
-  );
-
-  const buffer = Buffer.from(
-    await file.arrayBuffer()
-  );
+  const inputPath = path.join(dir, `${prefix}${ext}`);
+  const buffer = Buffer.from(await file.arrayBuffer());
 
   await writeFile(inputPath, buffer);
 
@@ -49,12 +35,9 @@ export async function writeUploadToTemp(
 }
 
 function extensionForFile(file: File) {
-  const nameExt = path.extname(
-    file.name || ""
-  ).toLowerCase();
+  const nameExt = path.extname(file.name || "").toLowerCase();
 
   if (nameExt) return nameExt;
-
   if (file.type.includes("mp4")) return ".mp4";
   if (file.type.includes("mpeg")) return ".mp3";
   if (file.type.includes("mp3")) return ".mp3";
@@ -64,19 +47,21 @@ function extensionForFile(file: File) {
   return ".bin";
 }
 
-export function extractAudio(
-  inputPath: string,
-  outputPath: string
-) {
+function escapeSubtitlePath(filePath: string) {
+  return filePath.replace(/\\/g, "/").replace(/:/g, "\\:");
+}
+
+function gameplayPath() {
+  return "C:\\ai-podcast-clipper\\PUBLIC\\backgrounds\\gameplay.mp4";
+}
+
+export function extractAudio(inputPath: string, outputPath: string) {
   return new Promise<void>((resolve, reject) => {
     ffmpeg(inputPath)
       .noVideo()
       .audioCodec("libmp3lame")
       .audioBitrate("96k")
-      .outputOptions([
-        "-ar 16000",
-        "-ac 1"
-      ])
+      .outputOptions(["-ar 16000", "-ac 1"])
       .save(outputPath)
       .on("end", () => resolve())
       .on("error", reject);
@@ -106,6 +91,7 @@ export function renderClip(params: {
   end: number;
   isVideo: boolean;
   cropMode?: CropMode;
+  layoutMode?: LayoutMode;
 }) {
   const {
     inputPath,
@@ -114,7 +100,8 @@ export function renderClip(params: {
     start,
     end,
     isVideo,
-    cropMode = "center"
+    cropMode = "center",
+    layoutMode = "normal"
   } = params;
 
   const cropX =
@@ -124,20 +111,46 @@ export function renderClip(params: {
       ? "iw-1080"
       : "(iw-1080)/2";
 
-  const duration = Math.max(
-    1,
-    end - start
-  );
+  const duration = Math.max(1, end - start);
+  const escapedSubtitlePath = escapeSubtitlePath(subtitlePath);
 
   return new Promise<void>((resolve, reject) => {
+    if (layoutMode === "split-screen" && isVideo) {
+      ffmpeg()
+        .input(inputPath)
+        .seekInput(start)
+        .duration(duration)
+        .input(gameplayPath())
+        .inputOptions(["-stream_loop -1"])
+        .duration(duration)
+        .complexFilter([
+          `[0:v]scale=1080:960:force_original_aspect_ratio=increase,crop=1080:960:${cropX}:0[top]`,
+          `[1:v]scale=1080:960:force_original_aspect_ratio=increase,crop=1080:960:(iw-1080)/2:(ih-960)/2[bottom]`,
+          `[top][bottom]vstack=inputs=2,subtitles='${escapedSubtitlePath}'[v]`
+        ])
+        .outputOptions([
+          "-map [v]",
+          "-map 0:a:0?",
+          "-c:v libx264",
+          "-preset veryfast",
+          "-crf 23",
+          "-c:a aac",
+          "-b:a 128k",
+          "-movflags +faststart",
+          "-pix_fmt yuv420p",
+          "-shortest"
+        ])
+        .save(outputPath)
+        .on("end", () => resolve())
+        .on("error", reject);
+
+      return;
+    }
+
     const command = isVideo
-      ? ffmpeg(inputPath)
-          .seekInput(start)
-          .duration(duration)
+      ? ffmpeg(inputPath).seekInput(start).duration(duration)
       : ffmpeg()
-          .input(
-            "color=c=0x111827:s=1080x1920:r=30"
-          )
+          .input("color=c=0x111827:s=1080x1920:r=30")
           .inputOptions(["-f lavfi"])
           .input(inputPath)
           .seekInput(start)
@@ -148,9 +161,7 @@ export function renderClip(params: {
         .videoFilters([
           "scale=1080:1920:force_original_aspect_ratio=increase",
           `crop=1080:1920:${cropX}:0`,
-          `subtitles='${subtitlePath
-            .replace(/\\/g, "/")
-            .replace(/:/g, "\\:")}'`
+          `subtitles='${escapedSubtitlePath}'`
         ])
         .outputOptions([
           "-map 0:v:0",
@@ -194,11 +205,7 @@ export async function createSubtitleFile(params: {
   title: string;
   captionStyle?: CaptionStyle;
 }) {
-  const clipWords = wordsForClip(
-    params.words,
-    params.start,
-    params.end
-  );
+  const clipWords = wordsForClip(params.words, params.start, params.end);
 
   const ass = createAssSubtitles(
     clipWords,
@@ -206,16 +213,9 @@ export async function createSubtitleFile(params: {
     params.captionStyle || "yellow-highlight"
   );
 
-  const subtitlePath = path.join(
-    params.dir,
-    `captions-${randomUUID()}.ass`
-  );
+  const subtitlePath = path.join(params.dir, `captions-${randomUUID()}.ass`);
 
-  await writeFile(
-    subtitlePath,
-    ass,
-    "utf8"
-  );
+  await writeFile(subtitlePath, ass, "utf8");
 
   return subtitlePath;
 }

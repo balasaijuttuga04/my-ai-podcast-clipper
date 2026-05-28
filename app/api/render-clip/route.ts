@@ -8,7 +8,10 @@ import {
   writeUploadToTemp
 } from "@/lib/ffmpeg";
 
-import type { CropMode } from "@/lib/ffmpeg";
+import type {
+  CropMode,
+  LayoutMode
+} from "@/lib/ffmpeg";
 import type { CaptionStyle } from "@/lib/captions";
 import type { WordTimestamp } from "@/lib/types";
 
@@ -26,22 +29,9 @@ export async function POST(req: NextRequest) {
     const title = String(formData.get("title") || "Podcast Clip");
     const wordsRaw = String(formData.get("words") || "[]");
 
-    const cropModeRaw = String(formData.get("cropMode") || "center");
-    const cropMode: CropMode =
-      cropModeRaw === "left" || cropModeRaw === "right"
-        ? cropModeRaw
-        : "center";
-
-    const captionStyleRaw = String(
-      formData.get("captionStyle") || "yellow-highlight"
-    );
-
-    const captionStyle: CaptionStyle =
-      captionStyleRaw === "classic" ||
-      captionStyleRaw === "bold-white" ||
-      captionStyleRaw === "yellow-highlight"
-        ? captionStyleRaw
-        : "yellow-highlight";
+    const cropMode = parseCropMode(formData.get("cropMode"));
+    const captionStyle = parseCaptionStyle(formData.get("captionStyle"));
+    const layoutMode = parseLayoutMode(formData.get("layoutMode"));
 
     if (!(file instanceof File)) {
       return NextResponse.json(
@@ -82,7 +72,8 @@ export async function POST(req: NextRequest) {
       start,
       end,
       isVideo,
-      cropMode
+      cropMode,
+      layoutMode
     });
 
     const output = await readFile(outputPath);
@@ -105,6 +96,40 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function parseCropMode(value: FormDataEntryValue | null): CropMode {
+  const raw = String(value || "center");
+
+  if (raw === "left" || raw === "right") {
+    return raw;
+  }
+
+  return "center";
+}
+
+function parseCaptionStyle(value: FormDataEntryValue | null): CaptionStyle {
+  const raw = String(value || "yellow-highlight");
+
+  if (
+    raw === "classic" ||
+    raw === "bold-white" ||
+    raw === "yellow-highlight"
+  ) {
+    return raw;
+  }
+
+  return "yellow-highlight";
+}
+
+function parseLayoutMode(value: FormDataEntryValue | null): LayoutMode {
+  const raw = String(value || "normal");
+
+  if (raw === "split-screen") {
+    return "split-screen";
+  }
+
+  return "normal";
 }
 
 function safeFileName(name: string) {
