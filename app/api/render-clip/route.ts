@@ -10,7 +10,8 @@ import {
 
 import type {
   CropMode,
-  LayoutMode
+  LayoutMode,
+  BackgroundVideo
 } from "@/lib/ffmpeg";
 import type { CaptionStyle } from "@/lib/captions";
 import type { WordTimestamp } from "@/lib/types";
@@ -32,6 +33,9 @@ export async function POST(req: NextRequest) {
     const cropMode = parseCropMode(formData.get("cropMode"));
     const captionStyle = parseCaptionStyle(formData.get("captionStyle"));
     const layoutMode = parseLayoutMode(formData.get("layoutMode"));
+    const backgroundVideo = parseBackgroundVideo(
+      formData.get("backgroundVideo")
+    );
 
     if (!(file instanceof File)) {
       return NextResponse.json(
@@ -73,7 +77,8 @@ export async function POST(req: NextRequest) {
       end,
       isVideo,
       cropMode,
-      layoutMode
+      layoutMode,
+      backgroundVideo
     });
 
     const output = await readFile(outputPath);
@@ -130,6 +135,22 @@ function parseLayoutMode(value: FormDataEntryValue | null): LayoutMode {
   }
 
   return "normal";
+}
+
+function parseBackgroundVideo(
+  value: FormDataEntryValue | null
+): BackgroundVideo {
+  const raw = String(value || "gameplay");
+
+  if (
+    raw === "gameplay" ||
+    raw === "minecraft" ||
+    raw === "satisfying"
+  ) {
+    return raw;
+  }
+
+  return "gameplay";
 }
 
 function safeFileName(name: string) {

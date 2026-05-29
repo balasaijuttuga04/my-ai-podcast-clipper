@@ -17,6 +17,7 @@ import {
 
 export type CropMode = "center" | "left" | "right";
 export type LayoutMode = "normal" | "split-screen";
+export type BackgroundVideo = "gameplay" | "minecraft" | "satisfying";
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 ffmpeg.setFfprobePath(ffprobeInstaller.path);
@@ -51,8 +52,19 @@ function escapeSubtitlePath(filePath: string) {
   return filePath.replace(/\\/g, "/").replace(/:/g, "\\:");
 }
 
-function gameplayPath() {
-  return "C:\\ai-podcast-clipper\\PUBLIC\\backgrounds\\gameplay.mp4";
+function backgroundPath(backgroundVideo: BackgroundVideo = "gameplay") {
+  const fileMap: Record<BackgroundVideo, string> = {
+    gameplay: "gameplay.mp4",
+    minecraft: "minecraft.mp4",
+    satisfying: "satisfying.mp4"
+  };
+
+  return path.join(
+    process.cwd(),
+    "PUBLIC",
+    "backgrounds",
+    fileMap[backgroundVideo]
+  );
 }
 
 export function extractAudio(inputPath: string, outputPath: string) {
@@ -92,6 +104,7 @@ export function renderClip(params: {
   isVideo: boolean;
   cropMode?: CropMode;
   layoutMode?: LayoutMode;
+  backgroundVideo?: BackgroundVideo;
 }) {
   const {
     inputPath,
@@ -101,7 +114,8 @@ export function renderClip(params: {
     end,
     isVideo,
     cropMode = "center",
-    layoutMode = "normal"
+    layoutMode = "normal",
+    backgroundVideo = "gameplay"
   } = params;
 
   const cropX =
@@ -120,7 +134,7 @@ export function renderClip(params: {
         .input(inputPath)
         .seekInput(start)
         .duration(duration)
-        .input(gameplayPath())
+        .input(backgroundPath(backgroundVideo))
         .inputOptions(["-stream_loop -1"])
         .duration(duration)
         .complexFilter([

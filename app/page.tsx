@@ -17,6 +17,7 @@ import { Sparkles } from "lucide-react";
 type CropMode = "center" | "left" | "right" | "auto";
 type CaptionStyle = "classic" | "bold-white" | "yellow-highlight";
 type LayoutMode = "normal" | "split-screen";
+type BackgroundVideo = "gameplay" | "minecraft" | "satisfying";
 
 export default function HomePage() {
   const [file, setFile] = useState<File | null>(null);
@@ -29,6 +30,8 @@ export default function HomePage() {
   const [captionStyle, setCaptionStyle] =
     useState<CaptionStyle>("yellow-highlight");
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("normal");
+  const [backgroundVideo, setBackgroundVideo] =
+    useState<BackgroundVideo>("gameplay");
 
   async function generateClips() {
     if (!file) {
@@ -117,6 +120,7 @@ export default function HomePage() {
         renderForm.append("cropMode", cropMode);
         renderForm.append("captionStyle", captionStyle);
         renderForm.append("layoutMode", layoutMode);
+        renderForm.append("backgroundVideo", backgroundVideo);
 
         const renderRes = await fetch("/api/render-clip", {
           method: "POST",
@@ -261,7 +265,7 @@ export default function HomePage() {
                   </select>
                 </label>
 
-                <label className="block sm:col-span-2">
+                <label className="block">
                   <span className="text-sm text-slate-300">
                     Layout style
                   </span>
@@ -277,6 +281,24 @@ export default function HomePage() {
                     <option value="split-screen">
                       Split screen gameplay
                     </option>
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="text-sm text-slate-300">
+                    Background Video
+                  </span>
+
+                  <select
+                    value={backgroundVideo}
+                    onChange={(e) =>
+                      setBackgroundVideo(e.target.value as BackgroundVideo)
+                    }
+                    className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3"
+                  >
+                    <option value="gameplay">Subway Surfers</option>
+                    <option value="minecraft">Minecraft Parkour</option>
+                    <option value="satisfying">Satisfying Video</option>
                   </select>
                 </label>
               </div>
