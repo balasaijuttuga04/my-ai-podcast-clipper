@@ -21,9 +21,10 @@ function assTime(seconds: number) {
   const s = Math.floor((cs % 6000) / 100);
   const c = cs % 100;
 
-  return `${h}:${String(m).padStart(2, "0")}:${String(
-    s
-  ).padStart(2, "0")}.${String(c).padStart(2, "0")}`;
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(
+    2,
+    "0"
+  )}.${String(c).padStart(2, "0")}`;
 }
 
 export function wordsForClip(
@@ -45,12 +46,10 @@ export function groupWordsIntoCaptionLines(
   maxWords = 4
 ) {
   const groups: WordTimestamp[][] = [];
-
   let current: WordTimestamp[] = [];
 
   for (const word of words) {
     const prev = current[current.length - 1];
-
     const gap = prev ? word.start - prev.end : 0;
 
     if (current.length >= maxWords || gap > 0.7) {
@@ -61,9 +60,7 @@ export function groupWordsIntoCaptionLines(
     current.push(word);
   }
 
-  if (current.length) {
-    groups.push(current);
-  }
+  if (current.length) groups.push(current);
 
   return groups;
 }
@@ -92,34 +89,71 @@ function getStyle(style: CaptionStyle) {
   };
 }
 
+function createLineText(
+  group: WordTimestamp[],
+  activeIndex: number,
+  style: CaptionStyle,
+  styleConfig: {
+    fontSize: number;
+    outline: number;
+    shadow: number;
+  }
+) {
+  return group
+    .map((word, index) => {
+      const clean = escapeAssText(word.word.toUpperCase());
+
+      if (style === "classic") {
+        return `{\\c&HFFFFFF&\\fs${styleConfig.fontSize}\\bord${styleConfig.outline}}${clean}`;
+      }
+
+      if (style === "bold-white") {
+        const activeSize =
+          index === activeIndex
+            ? styleConfig.fontSize + 8
+            : styleConfig.fontSize;
+
+        return `{\\c&HFFFFFF&\\fs${activeSize}\\bord${styleConfig.outline}}${clean}`;
+      }
+
+      if (index === activeIndex) {
+        return `{\\c&H00E5FF&\\fs${styleConfig.fontSize + 12}\\bord${
+          styleConfig.outline + 2
+        }}${clean}`;
+      }
+
+      return `{\\c&HFFFFFF&\\fs${styleConfig.fontSize}\\bord${styleConfig.outline}}${clean}`;
+    })
+    .join(" ");
+}
+
 export function createAssSubtitles(
   words: WordTimestamp[],
   title = "Podcast Clip",
   style: CaptionStyle = "yellow-highlight"
 ) {
   const groups = groupWordsIntoCaptionLines(words);
-
   const styleConfig = getStyle(style);
-
   const events: string[] = [];
 
   for (const group of groups) {
+    if (style === "classic") {
+      const start = group[0].start;
+      const end = group[group.length - 1].end;
+      const line = createLineText(group, -1, style, styleConfig);
+
+      events.push(
+        `Dialogue: 0,${assTime(start)},${assTime(
+          end
+        )},Default,,0,0,0,,${line}`
+      );
+
+      continue;
+    }
+
     for (let activeIndex = 0; activeIndex < group.length; activeIndex++) {
       const activeWord = group[activeIndex];
-
-      const line = group
-        .map((word, index) => {
-          const clean = escapeAssText(word.word.toUpperCase());
-
-          if (index === activeIndex) {
-            return `{\\c&H00E5FF&\\fs${
-              styleConfig.fontSize + 12
-            }\\bord${styleConfig.outline + 2}}${clean}`;
-          }
-
-          return `{\\c&HFFFFFF&\\fs${styleConfig.fontSize}\\bord${styleConfig.outline}}${clean}`;
-        })
-        .join(" ");
+      const line = createLineText(group, activeIndex, style, styleConfig);
 
       events.push(
         `Dialogue: 0,${assTime(activeWord.start)},${assTime(

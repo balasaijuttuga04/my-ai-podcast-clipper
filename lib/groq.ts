@@ -51,7 +51,7 @@ export async function detectHighlightsWithGroq(params: {
   const compactSegments = segments
     .map((s) => `[${s.start.toFixed(1)}-${s.end.toFixed(1)}] ${s.text}`)
     .join("\n")
-    .slice(0, 45000);
+    .slice(0, 25000);
 
   const prompt = `
 You are an expert short-form podcast editor and social media strategist.
@@ -87,7 +87,7 @@ Transcript segments:
 ${compactSegments}
 
 Full transcript fallback:
-${transcript.slice(0, 12000)}
+${transcript.slice(0, 4000)}
 `;
 
   const chat = await groq.chat.completions.create({
