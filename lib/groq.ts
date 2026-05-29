@@ -1,20 +1,28 @@
 import Groq from "groq-sdk";
-import type { Highlight, TranscriptSegment, WordTimestamp } from "./types";
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-});
+import type {
+  Highlight,
+  TranscriptSegment,
+  WordTimestamp
+} from "./types";
 
 export function assertGroqConfigured() {
   if (!process.env.GROQ_API_KEY) {
     throw new Error(
-      "GROQ_API_KEY is missing. Add it to .env.local and restart npm run dev."
+      "GROQ_API_KEY is missing. Add it to .env.local locally or Railway Variables in production."
     );
   }
 }
 
-export async function transcribeWithGroq(audioFile: File) {
+function getGroqClient() {
   assertGroqConfigured();
+
+  return new Groq({
+    apiKey: process.env.GROQ_API_KEY
+  });
+}
+
+export async function transcribeWithGroq(audioFile: File) {
+  const groq = getGroqClient();
 
   const transcription = await groq.audio.transcriptions.create({
     file: audioFile,
@@ -38,13 +46,33 @@ function sanitizeJson(raw: string) {
   return fenced ? fenced[1].trim() : trimmed;
 }
 
+function normalizeHighlights(
+  rawHighlights: any[],
+  numberOfClips: number
+): Highlight[] {
+  return rawHighlights
+    .map((h: any) => ({
+      title: String(h.title || "Podcast Clip"),
+      viralTitle: String(h.viralTitle || h.title || "Podcast Clip"),
+      caption: String(h.caption || ""),
+      hashtags: String(h.hashtags || ""),
+      start: Math.max(0, Number(h.start || 0)),
+      end: Math.max(0, Number(h.end || 0)),
+      reason: String(h.reason || "Strong highlight"),
+      hook: String(h.hook || ""),
+      score: Math.max(1, Math.min(10, Number(h.score || 7)))
+    }))
+    .filter((h: Highlight) => h.end > h.start)
+    .slice(0, numberOfClips);
+}
+
 export async function detectHighlightsWithGroq(params: {
   transcript: string;
   segments: TranscriptSegment[];
   clipLength: number;
   numberOfClips: number;
 }): Promise<Highlight[]> {
-  assertGroqConfigured();
+  const groq = getGroqClient();
 
   const { transcript, segments, clipLength, numberOfClips } = params;
 
@@ -114,20 +142,7 @@ ${transcript.slice(0, 4000)}
     ? parsed.highlights
     : [];
 
-  return highlights
-    .map((h: any) => ({
-      title: String(h.title || "Podcast Clip"),
-      viralTitle: String(h.viralTitle || h.title || "Podcast Clip"),
-      caption: String(h.caption || ""),
-      hashtags: String(h.hashtags || ""),
-      start: Math.max(0, Number(h.start || 0)),
-      end: Math.max(0, Number(h.end || 0)),
-      reason: String(h.reason || "Strong highlight"),
-      hook: String(h.hook || ""),
-      score: Math.max(1, Math.min(10, Number(h.score || 7)))
-    }))
-    .filter((h: Highlight) => h.end > h.start)
-    .slice(0, numberOfClips);
+  return normalizeHighlights(highlights, numberOfClips);
 }
 
 export async function detectHighlightsWithGeminiFallback(params: {
@@ -143,7 +158,7 @@ export async function detectHighlightsWithGeminiFallback(params: {
   const segmentText = params.segments
     .map((s) => `[${s.start.toFixed(1)}-${s.end.toFixed(1)}] ${s.text}`)
     .join("\n")
-    .slice(0, 40000);
+    .slice(0, 25000);
 
   const body = {
     contents: [
@@ -200,18 +215,5 @@ ${segmentText}`
     ? parsed.highlights
     : [];
 
-  return highlights
-    .map((h: any) => ({
-      title: String(h.title || "Podcast Clip"),
-      viralTitle: String(h.viralTitle || h.title || "Podcast Clip"),
-      caption: String(h.caption || ""),
-      hashtags: String(h.hashtags || ""),
-      start: Math.max(0, Number(h.start || 0)),
-      end: Math.max(0, Number(h.end || 0)),
-      reason: String(h.reason || "Strong highlight"),
-      hook: String(h.hook || ""),
-      score: Math.max(1, Math.min(10, Number(h.score || 7)))
-    }))
-    .filter((h: Highlight) => h.end > h.start)
-    .slice(0, params.numberOfClips);
+  return normalizeHighlights(highlights, params.numberOfClips);
 }
