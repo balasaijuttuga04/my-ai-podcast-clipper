@@ -141,6 +141,9 @@ export default function HomePage() {
         rendered.push({
           id: crypto.randomUUID(),
           title: h.title || `Clip ${i + 1}`,
+          viralTitle: h.viralTitle,
+          caption: h.caption,
+          hashtags: h.hashtags,
           start: h.start,
           end: h.end,
           reason: h.reason,

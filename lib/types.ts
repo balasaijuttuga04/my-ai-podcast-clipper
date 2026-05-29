@@ -13,6 +13,9 @@ export type TranscriptSegment = {
 
 export type Highlight = {
   title: string;
+  viralTitle: string;
+  caption: string;
+  hashtags: string;
   start: number;
   end: number;
   reason: string;
@@ -23,6 +26,9 @@ export type Highlight = {
 export type RenderedClip = {
   id: string;
   title: string;
+  viralTitle?: string;
+  caption?: string;
+  hashtags?: string;
   downloadUrl: string;
   start: number;
   end: number;

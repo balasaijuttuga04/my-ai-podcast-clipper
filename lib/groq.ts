@@ -7,15 +7,15 @@ const groq = new Groq({
 
 export function assertGroqConfigured() {
   if (!process.env.GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY is missing. Add it to .env.local and restart npm run dev.");
+    throw new Error(
+      "GROQ_API_KEY is missing. Add it to .env.local and restart npm run dev."
+    );
   }
 }
 
 export async function transcribeWithGroq(audioFile: File) {
   assertGroqConfigured();
 
-  // Word-level timestamps let us align captions to exact speech timing.
-  // verbose_json returns transcript text, segments, and word-level timing metadata.
   const transcription = await groq.audio.transcriptions.create({
     file: audioFile,
     model: process.env.GROQ_TRANSCRIPTION_MODEL || "whisper-large-v3-turbo",
@@ -34,6 +34,7 @@ export async function transcribeWithGroq(audioFile: File) {
 function sanitizeJson(raw: string) {
   const trimmed = raw.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+
   return fenced ? fenced[1].trim() : trimmed;
 }
 
@@ -46,27 +47,33 @@ export async function detectHighlightsWithGroq(params: {
   assertGroqConfigured();
 
   const { transcript, segments, clipLength, numberOfClips } = params;
+
   const compactSegments = segments
     .map((s) => `[${s.start.toFixed(1)}-${s.end.toFixed(1)}] ${s.text}`)
     .join("\n")
     .slice(0, 45000);
 
   const prompt = `
-You are an expert short-form podcast editor.
+You are an expert short-form podcast editor and social media strategist.
+
 Find ${numberOfClips} viral-ready clips from this transcript.
 
 Rules:
 - Each clip must be ${Math.max(25, clipLength - 8)} to ${clipLength + 8} seconds long.
-- Prefer strong hooks, conflict, useful advice, surprising statements, story turns, or emotional peaks.
+- Prefer strong hooks, conflict, useful advice, surprising statements, story turns, emotional peaks, or controversial insights.
 - Avoid intros, sponsor reads, dead air, and incomplete thoughts.
 - Use exact numeric seconds from the transcript.
+- Create titles/captions that feel natural for TikTok, Reels, and YouTube Shorts.
 - Return only valid JSON. No markdown.
 
 JSON shape:
 {
   "highlights": [
     {
-      "title": "short title",
+      "title": "short internal title",
+      "viralTitle": "viral social media title",
+      "caption": "short TikTok/Reels caption",
+      "hashtags": "#podcast #shorts #viral #fyp",
       "start": 12.3,
       "end": 56.8,
       "reason": "why this clip is good",
@@ -85,7 +92,7 @@ ${transcript.slice(0, 12000)}
 
   const chat = await groq.chat.completions.create({
     model: process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile",
-    temperature: 0.2,
+    temperature: 0.3,
     response_format: { type: "json_object" },
     messages: [
       {
@@ -93,17 +100,26 @@ ${transcript.slice(0, 12000)}
         content:
           "You select podcast highlights for TikTok/Reels/Shorts and return strict JSON."
       },
-      { role: "user", content: prompt }
+      {
+        role: "user",
+        content: prompt
+      }
     ]
   } as any);
 
   const content = chat.choices[0]?.message?.content || "{}";
   const parsed = JSON.parse(sanitizeJson(content));
 
-  const highlights = Array.isArray(parsed.highlights) ? parsed.highlights : [];
+  const highlights = Array.isArray(parsed.highlights)
+    ? parsed.highlights
+    : [];
+
   return highlights
     .map((h: any) => ({
       title: String(h.title || "Podcast Clip"),
+      viralTitle: String(h.viralTitle || h.title || "Podcast Clip"),
+      caption: String(h.caption || ""),
+      hashtags: String(h.hashtags || ""),
       start: Math.max(0, Number(h.start || 0)),
       end: Math.max(0, Number(h.end || 0)),
       reason: String(h.reason || "Strong highlight"),
@@ -135,8 +151,20 @@ export async function detectHighlightsWithGeminiFallback(params: {
         parts: [
           {
             text: `Return valid JSON only with {"highlights":[...]}.
+
 Find ${params.numberOfClips} clips of about ${params.clipLength}s.
-Fields: title,start,end,reason,hook,score.
+
+Each highlight must include:
+title,
+viralTitle,
+caption,
+hashtags,
+start,
+end,
+reason,
+hook,
+score.
+
 Transcript:
 ${segmentText}`
           }
@@ -144,7 +172,7 @@ ${segmentText}`
       }
     ],
     generationConfig: {
-      temperature: 0.2,
+      temperature: 0.3,
       responseMimeType: "application/json"
     }
   };
@@ -153,15 +181,37 @@ ${segmentText}`
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify(body)
     }
   );
 
-  if (!res.ok) throw new Error("Gemini fallback failed.");
+  if (!res.ok) {
+    throw new Error("Gemini fallback failed.");
+  }
+
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
   const parsed = JSON.parse(sanitizeJson(text));
 
-  return (parsed.highlights || []).slice(0, params.numberOfClips);
+  const highlights = Array.isArray(parsed.highlights)
+    ? parsed.highlights
+    : [];
+
+  return highlights
+    .map((h: any) => ({
+      title: String(h.title || "Podcast Clip"),
+      viralTitle: String(h.viralTitle || h.title || "Podcast Clip"),
+      caption: String(h.caption || ""),
+      hashtags: String(h.hashtags || ""),
+      start: Math.max(0, Number(h.start || 0)),
+      end: Math.max(0, Number(h.end || 0)),
+      reason: String(h.reason || "Strong highlight"),
+      hook: String(h.hook || ""),
+      score: Math.max(1, Math.min(10, Number(h.score || 7)))
+    }))
+    .filter((h: Highlight) => h.end > h.start)
+    .slice(0, params.numberOfClips);
 }
