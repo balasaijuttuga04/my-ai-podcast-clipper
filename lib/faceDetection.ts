@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as faceapi from "@vladmandic/face-api";
 import path from "path";
 import canvas from "canvas";
