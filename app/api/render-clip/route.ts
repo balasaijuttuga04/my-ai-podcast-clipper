@@ -20,22 +20,33 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+const IS_RAILWAY = Boolean(process.env.RAILWAY_ENVIRONMENT);
+const RAILWAY_MAX_CLIP_SECONDS = 25;
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
 
     const file = formData.get("file");
     const start = Number(formData.get("start"));
-    const end = Number(formData.get("end"));
+    const rawEnd = Number(formData.get("end"));
     const title = String(formData.get("title") || "Podcast Clip");
     const wordsRaw = String(formData.get("words") || "[]");
 
     const cropMode = parseCropMode(formData.get("cropMode"));
     const captionStyle = parseCaptionStyle(formData.get("captionStyle"));
-    const layoutMode = parseLayoutMode(formData.get("layoutMode"));
+
+    const layoutMode: LayoutMode = IS_RAILWAY
+      ? "normal"
+      : parseLayoutMode(formData.get("layoutMode"));
+
     const backgroundVideo = parseBackgroundVideo(
       formData.get("backgroundVideo")
     );
+
+    const end = IS_RAILWAY
+      ? Math.min(rawEnd, start + RAILWAY_MAX_CLIP_SECONDS)
+      : rawEnd;
 
     if (!(file instanceof File)) {
       return NextResponse.json(
@@ -68,6 +79,17 @@ export async function POST(req: NextRequest) {
 
     const isVideo =
       file.type.startsWith("video/") || /\.(mp4|mov)$/i.test(file.name);
+
+    console.log("RENDER_SETTINGS", {
+      isRailway: IS_RAILWAY,
+      start,
+      end,
+      duration: end - start,
+      layoutMode,
+      cropMode,
+      isVideo,
+      backgroundVideo
+    });
 
     await renderClip({
       inputPath,
