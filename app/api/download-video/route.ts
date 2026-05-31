@@ -12,32 +12,51 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+function getYtDlpPath() {
+  if (process.platform === "win32") {
+    return "C:\\ai-podcast-clipper\\bin\\yt-dlp.exe";
+  }
+
+  return "yt-dlp";
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { url } = await req.json();
 
     if (!url || typeof url !== "string") {
-      return NextResponse.json({ error: "Video URL is required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Video URL is required." },
+        { status: 400 }
+      );
     }
 
     const dir = path.join(os.tmpdir(), "ai-podcast-clipper-url", randomUUID());
     await mkdir(dir, { recursive: true });
 
     const outputPath = path.join(dir, "source.mp4");
-    const ytDlpPath = "C:\\ai-podcast-clipper\\bin\\yt-dlp.exe";
+    const ytDlpPath = getYtDlpPath();
 
-    console.log("USING_YT_DLP_PATH", ytDlpPath);
+    console.log("PLATFORM:", process.platform);
+    console.log("USING_YT_DLP_PATH:", ytDlpPath);
 
-    await execFileAsync(ytDlpPath, [
-      url,
-      "--output",
-      outputPath,
-      "--format",
-      "best[ext=mp4]/best",
-      "--no-playlist",
-      "--merge-output-format",
-      "mp4"
-    ]);
+    await execFileAsync(
+      ytDlpPath,
+      [
+        url,
+        "--output",
+        outputPath,
+        "--format",
+        "best[ext=mp4][height<=720]/best[height<=720]/best",
+        "--no-playlist",
+        "--merge-output-format",
+        "mp4",
+        "--no-warnings"
+      ],
+      {
+        maxBuffer: 1024 * 1024 * 20
+      }
+    );
 
     const video = await readFile(outputPath);
 
@@ -45,7 +64,8 @@ export async function POST(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "video/mp4",
-        "Content-Disposition": `attachment; filename="downloaded-video.mp4"`
+        "Content-Disposition":
+          'attachment; filename="downloaded-video.mp4"'
       }
     });
   } catch (error: any) {
