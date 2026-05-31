@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "python3 -m pip install -U yt-dlp || pip install -U yt-dlp",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
