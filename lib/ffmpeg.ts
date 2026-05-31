@@ -19,6 +19,10 @@ export type CropMode = "center" | "left" | "right";
 export type LayoutMode = "normal" | "split-screen";
 export type BackgroundVideo = "gameplay" | "minecraft" | "satisfying";
 
+const OUTPUT_WIDTH = 720;
+const OUTPUT_HEIGHT = 1280;
+const HALF_HEIGHT = 640;
+
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 ffmpeg.setFfprobePath(ffprobeInstaller.path);
 
@@ -67,12 +71,18 @@ function backgroundPath(backgroundVideo: BackgroundVideo = "gameplay") {
   );
 }
 
+function cropXForMode(cropMode: CropMode, width = OUTPUT_WIDTH) {
+  if (cropMode === "left") return "0";
+  if (cropMode === "right") return `iw-${width}`;
+  return `(iw-${width})/2`;
+}
+
 export function extractAudio(inputPath: string, outputPath: string) {
   return new Promise<void>((resolve, reject) => {
     ffmpeg(inputPath)
       .noVideo()
       .audioCodec("libmp3lame")
-      .audioBitrate("96k")
+      .audioBitrate("80k")
       .outputOptions(["-ar 16000", "-ac 1"])
       .save(outputPath)
       .on("end", () => resolve())
@@ -118,14 +128,8 @@ export function renderClip(params: {
     backgroundVideo = "gameplay"
   } = params;
 
-  const cropX =
-    cropMode === "left"
-      ? "0"
-      : cropMode === "right"
-      ? "iw-1080"
-      : "(iw-1080)/2";
-
-  const duration = Math.max(1, end - start);
+  const cropX = cropXForMode(cropMode);
+  const duration = Math.max(1, Math.min(60, end - start));
   const escapedSubtitlePath = escapeSubtitlePath(subtitlePath);
 
   return new Promise<void>((resolve, reject) => {
@@ -138,18 +142,20 @@ export function renderClip(params: {
         .inputOptions(["-stream_loop -1"])
         .duration(duration)
         .complexFilter([
-          `[0:v]scale=1080:960:force_original_aspect_ratio=increase,crop=1080:960:${cropX}:0[top]`,
-          `[1:v]scale=1080:960:force_original_aspect_ratio=increase,crop=1080:960:(iw-1080)/2:(ih-960)/2[bottom]`,
+          `[0:v]scale=${OUTPUT_WIDTH}:${HALF_HEIGHT}:force_original_aspect_ratio=increase,crop=${OUTPUT_WIDTH}:${HALF_HEIGHT}:${cropX}:0[top]`,
+          `[1:v]scale=${OUTPUT_WIDTH}:${HALF_HEIGHT}:force_original_aspect_ratio=increase,crop=${OUTPUT_WIDTH}:${HALF_HEIGHT}:(iw-${OUTPUT_WIDTH})/2:(ih-${HALF_HEIGHT})/2[bottom]`,
           `[top][bottom]vstack=inputs=2,subtitles='${escapedSubtitlePath}'[v]`
         ])
         .outputOptions([
           "-map [v]",
           "-map 0:a:0?",
           "-c:v libx264",
-          "-preset veryfast",
-          "-crf 23",
+          "-preset ultrafast",
+          "-crf 28",
+          "-r 24",
+          "-threads 1",
           "-c:a aac",
-          "-b:a 128k",
+          "-b:a 96k",
           "-movflags +faststart",
           "-pix_fmt yuv420p",
           "-shortest"
@@ -164,7 +170,7 @@ export function renderClip(params: {
     const command = isVideo
       ? ffmpeg(inputPath).seekInput(start).duration(duration)
       : ffmpeg()
-          .input("color=c=0x111827:s=1080x1920:r=30")
+          .input(`color=c=0x111827:s=${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}:r=24`)
           .inputOptions(["-f lavfi"])
           .input(inputPath)
           .seekInput(start)
@@ -173,18 +179,20 @@ export function renderClip(params: {
     if (isVideo) {
       command
         .videoFilters([
-          "scale=1080:1920:force_original_aspect_ratio=increase",
-          `crop=1080:1920:${cropX}:0`,
+          `scale=${OUTPUT_WIDTH}:${OUTPUT_HEIGHT}:force_original_aspect_ratio=increase`,
+          `crop=${OUTPUT_WIDTH}:${OUTPUT_HEIGHT}:${cropX}:0`,
           `subtitles='${escapedSubtitlePath}'`
         ])
         .outputOptions([
           "-map 0:v:0",
           "-map 0:a:0?",
           "-c:v libx264",
-          "-preset veryfast",
-          "-crf 23",
+          "-preset ultrafast",
+          "-crf 28",
+          "-r 24",
+          "-threads 1",
           "-c:a aac",
-          "-b:a 128k",
+          "-b:a 96k",
           "-movflags +faststart",
           "-pix_fmt yuv420p",
           "-shortest"
@@ -194,10 +202,12 @@ export function renderClip(params: {
         "-map 0:v:0",
         "-map 1:a:0",
         "-c:v libx264",
-        "-preset veryfast",
-        "-crf 23",
+        "-preset ultrafast",
+        "-crf 28",
+        "-r 24",
+        "-threads 1",
         "-c:a aac",
-        "-b:a 128k",
+        "-b:a 96k",
         "-movflags +faststart",
         "-pix_fmt yuv420p",
         "-shortest"
