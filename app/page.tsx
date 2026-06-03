@@ -16,8 +16,6 @@ import { Sparkles } from "lucide-react";
 
 type CropMode = "center" | "left" | "right" | "auto";
 type CaptionStyle = "classic" | "bold-white" | "yellow-highlight";
-type LayoutMode = "normal" | "split-screen";
-type BackgroundVideo = "gameplay" | "minecraft" | "satisfying";
 
 export default function HomePage() {
   const [file, setFile] = useState<File | null>(null);
@@ -29,9 +27,6 @@ export default function HomePage() {
   const [cropMode, setCropMode] = useState<CropMode>("center");
   const [captionStyle, setCaptionStyle] =
     useState<CaptionStyle>("yellow-highlight");
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>("normal");
-  const [backgroundVideo, setBackgroundVideo] =
-    useState<BackgroundVideo>("gameplay");
 
   async function generateClips() {
     if (!file) {
@@ -119,8 +114,6 @@ export default function HomePage() {
         renderForm.append("words", JSON.stringify(transcription.words));
         renderForm.append("cropMode", cropMode);
         renderForm.append("captionStyle", captionStyle);
-        renderForm.append("layoutMode", layoutMode);
-        renderForm.append("backgroundVideo", backgroundVideo);
 
         const renderRes = await fetch("/api/render-clip", {
           method: "POST",
@@ -168,7 +161,7 @@ export default function HomePage() {
           <div className="flex items-center gap-3 text-cyan-300">
             <Sparkles className="h-6 w-6" />
             <span className="text-sm font-semibold uppercase tracking-[0.3em]">
-              AI Podcast Clipper
+              CutMyShort
             </span>
           </div>
 
@@ -177,9 +170,9 @@ export default function HomePage() {
           </h1>
 
           <p className="mt-4 max-w-2xl text-slate-300">
-            Upload a podcast file, transcribe with Groq Whisper, detect strong
-            moments with an LLM, and render 9:16 clips with burned-in captions
-            using FFmpeg.
+            Upload a podcast or video file, detect strong moments with AI, and
+            generate captioned vertical shorts ready for TikTok, Reels, and
+            YouTube Shorts.
           </p>
         </section>
 
@@ -267,43 +260,6 @@ export default function HomePage() {
                     </option>
                   </select>
                 </label>
-
-                <label className="block">
-                  <span className="text-sm text-slate-300">
-                    Layout style
-                  </span>
-
-                  <select
-                    value={layoutMode}
-                    onChange={(e) =>
-                      setLayoutMode(e.target.value as LayoutMode)
-                    }
-                    className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3"
-                  >
-                    <option value="normal">Normal vertical</option>
-                    <option value="split-screen">
-                      Split screen gameplay
-                    </option>
-                  </select>
-                </label>
-
-                <label className="block">
-                  <span className="text-sm text-slate-300">
-                    Background Video
-                  </span>
-
-                  <select
-                    value={backgroundVideo}
-                    onChange={(e) =>
-                      setBackgroundVideo(e.target.value as BackgroundVideo)
-                    }
-                    className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3"
-                  >
-                    <option value="gameplay">Subway Surfers</option>
-                    <option value="minecraft">Minecraft Parkour</option>
-                    <option value="satisfying">Satisfying Video</option>
-                  </select>
-                </label>
               </div>
 
               <button
@@ -339,7 +295,7 @@ export default function HomePage() {
                 Word-level timestamps attach start/end seconds to each word.
                 The renderer groups those words into short subtitle lines,
                 writes an ASS subtitle file, and FFmpeg burns it into the final
-                1080x1920 MP4.
+                vertical MP4.
               </p>
             </div>
           </aside>
