@@ -1,4 +1,10 @@
-import type { VideoJob } from "@prisma/client";
+type VideoJobRow = {
+  id: string;
+  fileName: string;
+  clipCount: number;
+  status: string;
+  createdAt: Date;
+};
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -52,7 +58,7 @@ export default async function DashboardPage() {
               </thead>
 
               <tbody className="divide-y divide-gray-800 bg-gray-950">
-                {jobs.map((job: VideoJob) => (
+                {jobs.map((job: VideoJobRow) => (
                   <tr key={job.id}>
                     <td className="px-4 py-3 font-medium">{job.fileName}</td>
                     <td className="px-4 py-3">{job.clipCount}</td>
