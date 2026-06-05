@@ -1,3 +1,5 @@
+import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import { mkdir } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import { readFile, readdir } from "fs/promises";
@@ -62,26 +64,26 @@ export async function POST(req: NextRequest) {
     await extractAudio(inputPath, audioPath);
 
     const chunksDir = path.join(dir, "chunks");
-    await execFileAsync("mkdir", ["-p", chunksDir]);
+    await mkdir(chunksDir, { recursive: true });
 
-    await execFileAsync("ffmpeg", [
-      "-y",
-      "-i",
-      audioPath,
-      "-ac",
-      "1",
-      "-ar",
-      "16000",
-      "-b:a",
-      "32k",
-      "-f",
-      "segment",
-      "-segment_time",
-      String(CHUNK_SECONDS),
-      "-reset_timestamps",
-      "1",
-      path.join(chunksDir, "chunk-%03d.mp3")
-    ]);
+    await execFileAsync(ffmpegInstaller.path, [
+  "-y",
+  "-i",
+  audioPath,
+  "-ac",
+  "1",
+  "-ar",
+  "16000",
+  "-b:a",
+  "32k",
+  "-f",
+  "segment",
+  "-segment_time",
+  String(CHUNK_SECONDS),
+  "-reset_timestamps",
+  "1",
+  path.join(chunksDir, "chunk-%03d.mp3")
+]);
 
     const chunkFiles = (await readdir(chunksDir))
       .filter((name) => name.endsWith(".mp3"))

@@ -1,4 +1,5 @@
 "use client";
+import { UserButton } from "@clerk/nextjs";
 
 import { useState } from "react";
 import Uploader from "@/components/Uploader";
@@ -144,6 +145,17 @@ export default function HomePage() {
         });
 
         setClips([...rendered]);
+        await fetch("/api/video-jobs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fileName: file.name,
+            
+            status: "completed",
+            }),
+            });
       }
 
       setStep("done");
@@ -156,6 +168,9 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen px-5 py-8">
+    <div className="absolute top-4 right-4 z-50">
+    <UserButton />
+    </div>
       <div className="mx-auto max-w-6xl">
         <section className="mb-8 rounded-[2rem] border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-8 shadow-2xl">
           <div className="flex items-center gap-3 text-cyan-300">
