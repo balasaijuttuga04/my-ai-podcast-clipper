@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
-import { readFile } from "fs/promises";
+import os from "os";
+import { auth } from "@clerk/nextjs/server";
+import { mkdtemp, readFile, readdir } from "fs/promises";
 
 import {
   createSubtitleFile,
-  renderClip,
-  writeUploadToTemp
+  renderClip
 } from "@/lib/ffmpeg";
 
 import type {
@@ -20,18 +21,45 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+const UPLOAD_ROOT = "/data/uploads";
 const IS_RAILWAY = Boolean(process.env.RAILWAY_ENVIRONMENT);
 const RAILWAY_MAX_CLIP_SECONDS = 25;
 
+async function getSourcePath(userId: string, sourceId: string) {
+  const sourceDir = path.join(UPLOAD_ROOT, userId, sourceId);
+  const files = await readdir(sourceDir);
+
+  const sourceFile = files.find((f) => f.startsWith("source."));
+
+  if (!sourceFile) {
+    throw new Error("Source video not found");
+  }
+
+  return path.join(sourceDir, sourceFile);
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const formData = await req.formData();
 
-    const file = formData.get("file");
+    const sourceId = String(formData.get("sourceId") || "");
     const start = Number(formData.get("start"));
     const rawEnd = Number(formData.get("end"));
     const title = String(formData.get("title") || "Podcast Clip");
     const wordsRaw = String(formData.get("words") || "[]");
+
+    if (!sourceId) {
+      return NextResponse.json(
+        { error: "Missing sourceId." },
+        { status: 400 }
+      );
+    }
 
     const cropMode = parseCropMode(formData.get("cropMode"));
     const captionStyle = parseCaptionStyle(formData.get("captionStyle"));
@@ -48,13 +76,6 @@ export async function POST(req: NextRequest) {
       ? Math.min(rawEnd, start + RAILWAY_MAX_CLIP_SECONDS)
       : rawEnd;
 
-    if (!(file instanceof File)) {
-      return NextResponse.json(
-        { error: "Original media file is missing." },
-        { status: 400 }
-      );
-    }
-
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
       return NextResponse.json(
         { error: "Invalid clip timestamps." },
@@ -62,9 +83,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const words = JSON.parse(wordsRaw) as WordTimestamp[];
+    const inputPath = await getSourcePath(userId, sourceId);
 
-    const { dir, inputPath } = await writeUploadToTemp(file, "source");
+    const dir = await mkdtemp(path.join(os.tmpdir(), "cutmyshort-render-"));
+
+    const words = JSON.parse(wordsRaw) as WordTimestamp[];
 
     const subtitlePath = await createSubtitleFile({
       dir,
@@ -77,11 +100,11 @@ export async function POST(req: NextRequest) {
 
     const outputPath = path.join(dir, "clip.mp4");
 
-    const isVideo =
-      file.type.startsWith("video/") || /\.(mp4|mov)$/i.test(file.name);
+    const isVideo = /\.(mp4|mov|m4v|webm)$/i.test(inputPath);
 
     console.log("RENDER_SETTINGS", {
       isRailway: IS_RAILWAY,
+      sourceId,
       start,
       end,
       duration: end - start,

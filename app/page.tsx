@@ -97,8 +97,24 @@ export default function HomePage() {
           "The AI could not find strong highlights. Try a longer or more conversational episode."
         );
       }
+      const uploadForm = new FormData();
+      uploadForm.append("file", file);
+      const uploadResponse = await fetch(
+        "/api/upload-source",
+        {
+          method: "POST",
+          body: uploadForm
+          }
+        );
+        if (!uploadResponse.ok) {
+          throw new Error("Upload failed");
+        }
+        const { sourceId } =
+        await uploadResponse.json(); 
 
       setStep("clipping");
+
+
 
       const rendered: RenderedClip[] = [];
 
@@ -108,7 +124,7 @@ export default function HomePage() {
         const h = highlights[i];
         const renderForm = new FormData();
 
-        renderForm.append("file", file);
+        renderForm.append("sourceId", sourceId);
         renderForm.append("start", String(h.start));
         renderForm.append("end", String(h.end));
         renderForm.append("title", h.title || `Clip ${i + 1}`);
