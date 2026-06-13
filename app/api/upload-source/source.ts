@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   try {
     console.log("UPLOAD_SOURCE_START");
 
-    const { userId } = auth();
+    const { userId } = await auth();
 
     if (!userId) {
       console.log("UPLOAD_SOURCE_UNAUTHORIZED");
