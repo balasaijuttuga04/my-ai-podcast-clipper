@@ -4,12 +4,22 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
+type ClipRow = {
+  id: string;
+  title: string;
+  fileName: string;
+  start: number;
+  end: number;
+  createdAt: Date;
+};
+
 type VideoJobRow = {
   id: string;
   fileName: string;
   clipCount: number;
   status: string;
   createdAt: Date;
+  clips: ClipRow[];
 };
 
 async function deleteJob(formData: FormData) {
@@ -50,6 +60,11 @@ function formatDateTime(date: Date) {
   }).format(date);
 }
 
+function formatDuration(start: number, end: number) {
+  const duration = Math.max(0, Math.round(end - start));
+  return `${duration}s`;
+}
+
 function statusClass(status: string) {
   const value = status.toLowerCase();
 
@@ -80,10 +95,17 @@ export default async function DashboardPage() {
   const jobs: VideoJobRow[] = await prisma.videoJob.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
+    include: {
+      clips: {
+        orderBy: { createdAt: "asc" },
+      },
+    },
   });
 
   const totalVideos = jobs.length;
-  const totalClips = jobs.reduce((sum, job) => sum + job.clipCount, 0);
+  const totalClips = jobs.reduce((sum, job) => {
+    return sum + (job.clips.length || job.clipCount);
+  }, 0);
   const lastUpload = jobs[0]?.createdAt;
 
   const displayName =
@@ -131,7 +153,7 @@ export default async function DashboardPage() {
             <div>
               <h2 className="text-lg font-semibold">Upload History</h2>
               <p className="mt-1 text-sm text-zinc-400">
-                Your recent podcast clip generations.
+                Your recent podcast clip generations and saved shorts.
               </p>
             </div>
           </div>
@@ -155,32 +177,19 @@ export default async function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-left text-sm">
-                <thead className="bg-white/5 text-xs uppercase tracking-wide text-zinc-400">
-                  <tr>
-                    <th className="px-5 py-3 font-medium">File Name</th>
-                    <th className="px-5 py-3 font-medium">Clips</th>
-                    <th className="px-5 py-3 font-medium">Status</th>
-                    <th className="px-5 py-3 font-medium">Created</th>
-                    <th className="px-5 py-3 text-right font-medium">Action</th>
-                  </tr>
-                </thead>
+            <div className="divide-y divide-white/10">
+              {jobs.map((job) => (
+                <div key={job.id} className="p-5 transition hover:bg-white/[0.03]">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-semibold text-white">
+                        {job.fileName}
+                      </p>
 
-                <tbody className="divide-y divide-white/10">
-                  {jobs.map((job) => (
-                    <tr key={job.id} className="transition hover:bg-white/[0.03]">
-                      <td className="max-w-xs px-5 py-4">
-                        <p className="truncate font-medium text-white">
-                          {job.fileName}
-                        </p>
-                      </td>
-
-                      <td className="px-5 py-4 text-zinc-300">
-                        {job.clipCount}
-                      </td>
-
-                      <td className="px-5 py-4">
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-zinc-400">
+                        <span>{job.clips.length || job.clipCount} clips</span>
+                        <span>•</span>
+                        <span>{formatDateTime(job.createdAt)}</span>
                         <span
                           className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${statusClass(
                             job.status
@@ -188,27 +197,51 @@ export default async function DashboardPage() {
                         >
                           {job.status}
                         </span>
-                      </td>
+                      </div>
+                    </div>
 
-                      <td className="px-5 py-4 text-zinc-400">
-                        {formatDateTime(job.createdAt)}
-                      </td>
+                    <form action={deleteJob}>
+                      <input type="hidden" name="jobId" value={job.id} />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-red-500/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
+                      >
+                        Delete Job
+                      </button>
+                    </form>
+                  </div>
 
-                      <td className="px-5 py-4 text-right">
-                        <form action={deleteJob}>
-                          <input type="hidden" name="jobId" value={job.id} />
-                          <button
-                            type="submit"
-                            className="rounded-lg border border-red-500/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
+                  {job.clips.length > 0 ? (
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {job.clips.map((clip, index) => (
+                        <div
+                          key={clip.id}
+                          className="rounded-xl border border-white/10 bg-black/40 p-4"
+                        >
+                          <p className="truncate text-sm font-semibold text-white">
+                            {clip.title || `Clip ${index + 1}`}
+                          </p>
+
+                          <p className="mt-1 text-xs text-zinc-500">
+                            Duration: {formatDuration(clip.start, clip.end)}
+                          </p>
+
+                          <a
+                            href={`/api/clips/${clip.id}/download`}
+                            className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-black transition hover:bg-cyan-300"
                           >
-                            Delete
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            Download Clip {index + 1}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-black/30 p-4 text-sm text-zinc-500">
+                      No saved clips for this job yet.
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </section>

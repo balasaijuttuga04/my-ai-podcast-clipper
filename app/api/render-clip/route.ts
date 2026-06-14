@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import os from "os";
 import { auth } from "@clerk/nextjs/server";
-import { mkdtemp, readFile, readdir } from "fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, readdir } from "fs/promises";
+
+import { prisma } from "@/lib/prisma";
 
 import {
   createSubtitleFile,
@@ -22,6 +24,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const UPLOAD_ROOT = "/data/uploads";
+const CLIP_ROOT = "/data/clips";
+
 const IS_RAILWAY = Boolean(process.env.RAILWAY_ENVIRONMENT);
 const RAILWAY_MAX_CLIP_SECONDS = 25;
 
@@ -49,6 +53,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
 
     const sourceId = String(formData.get("sourceId") || "");
+    const jobId = String(formData.get("jobId") || "");
     const start = Number(formData.get("start"));
     const rawEnd = Number(formData.get("end"));
     const title = String(formData.get("title") || "Podcast Clip");
@@ -58,6 +63,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Missing sourceId." },
         { status: 400 }
+      );
+    }
+
+    if (!jobId) {
+      return NextResponse.json(
+        { error: "Missing jobId." },
+        { status: 400 }
+      );
+    }
+
+    const existingJob = await prisma.videoJob.findFirst({
+      where: {
+        id: jobId,
+        userId,
+      },
+    });
+
+    if (!existingJob) {
+      return NextResponse.json(
+        { error: "Video job not found." },
+        { status: 404 }
       );
     }
 
@@ -105,6 +131,7 @@ export async function POST(req: NextRequest) {
     console.log("RENDER_SETTINGS", {
       isRailway: IS_RAILWAY,
       sourceId,
+      jobId,
       start,
       end,
       duration: end - start,
@@ -126,13 +153,46 @@ export async function POST(req: NextRequest) {
       backgroundVideo
     });
 
+    const safeTitle = safeFileName(title);
+    const clipId = crypto.randomUUID();
+    const clipFileName = `${safeTitle}-${clipId}.mp4`;
+
+    const clipDir = path.join(CLIP_ROOT, userId, jobId);
+    await mkdir(clipDir, { recursive: true });
+
+    const savedClipPath = path.join(clipDir, clipFileName);
+
+    await copyFile(outputPath, savedClipPath);
+
+    await prisma.clip.create({
+      data: {
+        id: clipId,
+        userId,
+        jobId,
+        title,
+        fileName: clipFileName,
+        filePath: savedClipPath,
+        start,
+        end,
+      },
+    });
+
+    await prisma.videoJob.update({
+      where: {
+        id: jobId,
+      },
+      data: {
+        status: "completed",
+      },
+    });
+
     const output = await readFile(outputPath);
 
     return new NextResponse(output, {
       status: 200,
       headers: {
         "Content-Type": "video/mp4",
-        "Content-Disposition": `attachment; filename="${safeFileName(title)}.mp4"`
+        "Content-Disposition": `attachment; filename="${safeTitle}.mp4"`
       }
     });
   } catch (error) {

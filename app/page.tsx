@@ -121,6 +121,28 @@ export default function HomePage() {
         throw new Error("Upload failed: missing sourceId.");
       }
 
+      const jobResponse = await fetch("/api/video-jobs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          clipCount: highlights.length,
+          status: "processing"
+        })
+      });
+
+      if (!jobResponse.ok) {
+        throw new Error("Could not create video job.");
+      }
+
+      const { job } = (await jobResponse.json()) as {
+        job: { id: string };
+      };
+
+      const jobId = job.id;
+
       setStep("clipping");
 
       const rendered: RenderedClip[] = [];
@@ -132,6 +154,7 @@ export default function HomePage() {
         const renderForm = new FormData();
 
         renderForm.append("sourceId", sourceId);
+        renderForm.append("jobId", jobId);
         renderForm.append("start", String(h.start));
         renderForm.append("end", String(h.end));
         renderForm.append("title", h.title || `Clip ${i + 1}`);
@@ -169,18 +192,6 @@ export default function HomePage() {
 
         setClips([...rendered]);
       }
-
-      await fetch("/api/video-jobs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          fileName: file.name,
-          clipCount: rendered.length,
-          status: "completed"
-        })
-      });
 
       setStep("done");
     } catch (e: any) {

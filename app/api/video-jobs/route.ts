@@ -12,6 +12,11 @@ export async function GET() {
   const jobs = await prisma.videoJob.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
+    include: {
+      clips: {
+        orderBy: { createdAt: "asc" },
+      },
+    },
   });
 
   return NextResponse.json({ jobs });
@@ -31,7 +36,7 @@ export async function POST(req: Request) {
       userId,
       fileName: body.fileName || "Untitled upload",
       clipCount: Number(body.clipCount || 0),
-      status: body.status || "completed",
+      status: body.status || "processing",
     },
   });
 
