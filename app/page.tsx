@@ -1,19 +1,22 @@
 "use client";
-import { UserButton } from "@clerk/nextjs";
 
+import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 import { useState } from "react";
+import { Sparkles } from "lucide-react";
+
 import Uploader from "@/components/Uploader";
 import ProgressIndicator, {
   type ProgressStep
 } from "@/components/ProgressIndicator";
 import ClipPreview from "@/components/ClipPreview";
+
 import type {
   Highlight,
   RenderedClip,
   TranscriptSegment,
   WordTimestamp
 } from "@/lib/types";
-import { Sparkles } from "lucide-react";
 
 type CropMode = "center" | "left" | "right" | "auto";
 type CaptionStyle = "classic" | "bold-white" | "yellow-highlight";
@@ -97,24 +100,28 @@ export default function HomePage() {
           "The AI could not find strong highlights. Try a longer or more conversational episode."
         );
       }
+
       const uploadForm = new FormData();
       uploadForm.append("file", file);
-      const uploadResponse = await fetch(
-        "/api/upload-source",
-        {
-          method: "POST",
-          body: uploadForm
-          }
-        );
-        if (!uploadResponse.ok) {
-          throw new Error("Upload failed");
-        }
-        const { sourceId } =
-        await uploadResponse.json(); 
+
+      const uploadResponse = await fetch("/api/upload-source", {
+        method: "POST",
+        body: uploadForm
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Upload failed.");
+      }
+
+      const { sourceId } = (await uploadResponse.json()) as {
+        sourceId: string;
+      };
+
+      if (!sourceId) {
+        throw new Error("Upload failed: missing sourceId.");
+      }
 
       setStep("clipping");
-
-
 
       const rendered: RenderedClip[] = [];
 
@@ -161,18 +168,19 @@ export default function HomePage() {
         });
 
         setClips([...rendered]);
-        await fetch("/api/video-jobs", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            fileName: file.name,
-            
-            status: "completed",
-            }),
-            });
       }
+
+      await fetch("/api/video-jobs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          clipCount: rendered.length,
+          status: "completed"
+        })
+      });
 
       setStep("done");
     } catch (e: any) {
@@ -182,11 +190,26 @@ export default function HomePage() {
     }
   }
 
+  const isGenerating =
+    step === "uploading" ||
+    step === "transcribing" ||
+    step === "analyzing" ||
+    step === "clipping" ||
+    step === "rendering";
+
   return (
     <main className="min-h-screen px-5 py-8">
-    <div className="absolute top-4 right-4 z-50">
-    <UserButton />
-    </div>
+      <div className="absolute right-4 top-4 z-50 flex items-center gap-3">
+        <Link
+          href="/dashboard"
+          className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
+        >
+          Dashboard
+        </Link>
+
+        <UserButton />
+      </div>
+
       <div className="mx-auto max-w-6xl">
         <section className="mb-8 rounded-[2rem] border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-8 shadow-2xl">
           <div className="flex items-center gap-3 text-cyan-300">
@@ -295,14 +318,7 @@ export default function HomePage() {
 
               <button
                 onClick={generateClips}
-                disabled={
-                  !file ||
-                  step === "uploading" ||
-                  step === "transcribing" ||
-                  step === "analyzing" ||
-                  step === "clipping" ||
-                  step === "rendering"
-                }
+                disabled={!file || isGenerating}
                 className="mt-6 w-full rounded-2xl bg-cyan-400 px-5 py-4 font-bold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Generate Clips
@@ -323,10 +339,10 @@ export default function HomePage() {
               <p className="font-semibold text-white">How it works</p>
 
               <p className="mt-2">
-                Word-level timestamps attach start/end seconds to each word.
-                The renderer groups those words into short subtitle lines,
-                writes an ASS subtitle file, and FFmpeg burns it into the final
-                vertical MP4.
+                Word-level timestamps attach start/end seconds to each word. The
+                renderer groups those words into short subtitle lines, writes an
+                ASS subtitle file, and FFmpeg burns it into the final vertical
+                MP4.
               </p>
             </div>
           </aside>
