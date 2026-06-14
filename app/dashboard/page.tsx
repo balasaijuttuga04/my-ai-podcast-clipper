@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
@@ -10,6 +11,26 @@ type VideoJobRow = {
   status: string;
   createdAt: Date;
 };
+
+async function deleteJob(formData: FormData) {
+  "use server";
+
+  const { userId } = await auth();
+  const jobId = formData.get("jobId");
+
+  if (!userId || typeof jobId !== "string") {
+    return;
+  }
+
+  await prisma.videoJob.deleteMany({
+    where: {
+      id: jobId,
+      userId,
+    },
+  });
+
+  revalidatePath("/dashboard");
+}
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en", {
@@ -135,13 +156,14 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-left text-sm">
+              <table className="w-full min-w-[820px] text-left text-sm">
                 <thead className="bg-white/5 text-xs uppercase tracking-wide text-zinc-400">
                   <tr>
                     <th className="px-5 py-3 font-medium">File Name</th>
                     <th className="px-5 py-3 font-medium">Clips</th>
                     <th className="px-5 py-3 font-medium">Status</th>
                     <th className="px-5 py-3 font-medium">Created</th>
+                    <th className="px-5 py-3 text-right font-medium">Action</th>
                   </tr>
                 </thead>
 
@@ -170,6 +192,18 @@ export default async function DashboardPage() {
 
                       <td className="px-5 py-4 text-zinc-400">
                         {formatDateTime(job.createdAt)}
+                      </td>
+
+                      <td className="px-5 py-4 text-right">
+                        <form action={deleteJob}>
+                          <input type="hidden" name="jobId" value={job.id} />
+                          <button
+                            type="submit"
+                            className="rounded-lg border border-red-500/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
+                          >
+                            Delete
+                          </button>
+                        </form>
                       </td>
                     </tr>
                   ))}
