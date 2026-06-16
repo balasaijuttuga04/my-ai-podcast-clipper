@@ -23,17 +23,17 @@ export async function GET(
     },
   });
 
-  if (!clip) {
-    return NextResponse.json({ error: "Clip not found" }, { status: 404 });
+  if (!clip || !clip.thumbnailPath) {
+    return NextResponse.json({ error: "Thumbnail not found" }, { status: 404 });
   }
 
-  const file = await readFile(clip.filePath);
+  const file = await readFile(clip.thumbnailPath);
 
   return new NextResponse(file, {
     status: 200,
     headers: {
-      "Content-Type": "video/mp4",
-      "Content-Disposition": `attachment; filename="${clip.fileName}"`,
+      "Content-Type": "image/jpeg",
+      "Cache-Control": "private, max-age=3600",
     },
   });
 }

@@ -190,6 +190,11 @@ export default async function DashboardPage() {
                           key={clip.id}
                           className="rounded-xl border border-white/10 bg-black/40 p-4"
                         >
+                          <img
+                            src={`/api/clips/${clip.id}/thumbnail`}
+                              alt={clip.title ?? `Clip ${index + 1}`}
+                                className="mb-3 aspect-video w-full rounded-lg object-cover bg-zinc-900"
+                                />
                           <p className="truncate text-sm font-semibold text-white">
                             {clip.title || `Clip ${index + 1}`}
                           </p>

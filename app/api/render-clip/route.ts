@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import os from "os";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import { auth } from "@clerk/nextjs/server";
 import { copyFile, mkdir, mkdtemp, readFile, readdir } from "fs/promises";
 
@@ -23,6 +25,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+const execFileAsync = promisify(execFile);
+
 const UPLOAD_ROOT = "/data/uploads";
 const CLIP_ROOT = "/data/clips";
 
@@ -40,6 +44,21 @@ async function getSourcePath(userId: string, sourceId: string) {
   }
 
   return path.join(sourceDir, sourceFile);
+}
+
+async function createThumbnail(videoPath: string, thumbnailPath: string) {
+  await execFileAsync("ffmpeg", [
+    "-y",
+    "-ss",
+    "00:00:01",
+    "-i",
+    videoPath,
+    "-frames:v",
+    "1",
+    "-vf",
+    "scale=360:-1",
+    thumbnailPath,
+  ]);
 }
 
 export async function POST(req: NextRequest) {
@@ -110,7 +129,6 @@ export async function POST(req: NextRequest) {
     }
 
     const inputPath = await getSourcePath(userId, sourceId);
-
     const dir = await mkdtemp(path.join(os.tmpdir(), "cutmyshort-render-"));
 
     const words = JSON.parse(wordsRaw) as WordTimestamp[];
@@ -156,13 +174,21 @@ export async function POST(req: NextRequest) {
     const safeTitle = safeFileName(title);
     const clipId = crypto.randomUUID();
     const clipFileName = `${safeTitle}-${clipId}.mp4`;
+    const thumbnailFileName = `${safeTitle}-${clipId}.jpg`;
 
     const clipDir = path.join(CLIP_ROOT, userId, jobId);
     await mkdir(clipDir, { recursive: true });
 
     const savedClipPath = path.join(clipDir, clipFileName);
+    const thumbnailPath = path.join(clipDir, thumbnailFileName);
 
     await copyFile(outputPath, savedClipPath);
+
+    try {
+      await createThumbnail(savedClipPath, thumbnailPath);
+    } catch (thumbnailError) {
+      console.error("THUMBNAIL_ERROR", thumbnailError);
+    }
 
     await prisma.clip.create({
       data: {
@@ -172,6 +198,7 @@ export async function POST(req: NextRequest) {
         title,
         fileName: clipFileName,
         filePath: savedClipPath,
+        thumbnailPath,
         start,
         end,
       },

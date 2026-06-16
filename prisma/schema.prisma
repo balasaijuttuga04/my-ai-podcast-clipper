@@ -15,19 +15,20 @@ model VideoJob {
   status    String   @default("completed")
   createdAt DateTime @default(now())
 
-  clips     Clip[]
+  clips Clip[]
 }
 
 model Clip {
-  id        String   @id @default(cuid())
-  userId    String
-  jobId     String
-  title     String
-  fileName  String
-  filePath  String
-  start     Float
-  end       Float
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  jobId         String
+  title         String
+  fileName      String
+  filePath      String
+  thumbnailPath String?
+  start         Float
+  end           Float
+  createdAt     DateTime @default(now())
 
-  job       VideoJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job VideoJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }
