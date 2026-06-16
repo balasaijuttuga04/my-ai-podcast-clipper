@@ -1,6 +1,6 @@
+import DeleteJobButton from "@/components/DeleteJobButton";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
@@ -21,26 +21,6 @@ type VideoJobRow = {
   createdAt: Date;
   clips: ClipRow[];
 };
-
-async function deleteJob(formData: FormData) {
-  "use server";
-
-  const { userId } = await auth();
-  const jobId = formData.get("jobId");
-
-  if (!userId || typeof jobId !== "string") {
-    return;
-  }
-
-  await prisma.videoJob.deleteMany({
-    where: {
-      id: jobId,
-      userId,
-    },
-  });
-
-  revalidatePath("/dashboard");
-}
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en", {
@@ -200,15 +180,7 @@ export default async function DashboardPage() {
                       </div>
                     </div>
 
-                    <form action={deleteJob}>
-                      <input type="hidden" name="jobId" value={job.id} />
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-red-500/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
-                      >
-                        Delete Job
-                      </button>
-                    </form>
+                    <DeleteJobButton jobId={job.id} />
                   </div>
 
                   {job.clips.length > 0 ? (
