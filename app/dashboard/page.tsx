@@ -192,9 +192,10 @@ export default async function DashboardPage() {
                         >
                           <img
                             src={`/api/clips/${clip.id}/thumbnail`}
-                              alt={clip.title ?? `Clip ${index + 1}`}
-                                className="mb-3 aspect-video w-full rounded-lg object-cover bg-zinc-900"
-                                />
+                            alt={clip.title ?? `Clip ${index + 1}`}
+                            className="mb-3 aspect-video w-full rounded-lg bg-zinc-900 object-cover"
+                          />
+
                           <p className="truncate text-sm font-semibold text-white">
                             {clip.title || `Clip ${index + 1}`}
                           </p>
@@ -203,12 +204,23 @@ export default async function DashboardPage() {
                             Duration: {formatDuration(clip.start, clip.end)}
                           </p>
 
-                          <a
-                            href={`/api/clips/${clip.id}/download`}
-                            className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-black transition hover:bg-cyan-300"
-                          >
-                            Download Clip {index + 1}
-                          </a>
+                          <div className="mt-4 grid grid-cols-2 gap-2">
+                            <a
+                              href={`/api/clips/${clip.id}/download`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10"
+                            >
+                              Preview
+                            </a>
+
+                            <a
+                              href={`/api/clips/${clip.id}/download`}
+                              className="inline-flex items-center justify-center rounded-lg bg-cyan-400 px-3 py-2 text-xs font-bold text-black transition hover:bg-cyan-300"
+                            >
+                              Download
+                            </a>
+                          </div>
                         </div>
                       ))}
                     </div>
