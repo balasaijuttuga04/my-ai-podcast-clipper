@@ -206,7 +206,7 @@ export default async function DashboardPage() {
 
                           <div className="mt-4 grid grid-cols-2 gap-2">
                             <a
-                              href={`/api/clips/${clip.id}/download`}
+                              href={`/api/clips/${clip.id}/preview`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center justify-center rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/10"

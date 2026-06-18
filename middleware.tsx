@@ -9,7 +9,7 @@ export default clerkMiddleware(async (auth, req) => {
   const { userId, redirectToSignIn } = await auth();
 
   if (!userId && !isPublicRoute(req)) {
-    return redirectToSignIn({ returnBackUrl: "https://cutmyshort.com" });
+    return redirectToSignIn({ returnBackUrl: "https://cutmyshort.com" })
   }
 });
 
