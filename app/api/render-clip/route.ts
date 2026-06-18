@@ -34,16 +34,25 @@ const IS_RAILWAY = Boolean(process.env.RAILWAY_ENVIRONMENT);
 const RAILWAY_MAX_CLIP_SECONDS = 25;
 
 async function getSourcePath(userId: string, sourceId: string) {
-  const sourceDir = path.join(UPLOAD_ROOT, userId, sourceId);
-  const files = await readdir(sourceDir);
+  const possibleDirs = [
+    path.join(UPLOAD_ROOT, userId, sourceId),
+    path.join(UPLOAD_ROOT, "public-user", sourceId),
+  ];
 
-  const sourceFile = files.find((f) => f.startsWith("source."));
+  for (const sourceDir of possibleDirs) {
+    try {
+      const files = await readdir(sourceDir);
+      const sourceFile = files.find((f) => f.startsWith("source."));
 
-  if (!sourceFile) {
-    throw new Error("Source video not found");
+      if (sourceFile) {
+        return path.join(sourceDir, sourceFile);
+      }
+    } catch {
+      // Try next location
+    }
   }
 
-  return path.join(sourceDir, sourceFile);
+  throw new Error(`Source video not found for sourceId ${sourceId}`);
 }
 
 async function createThumbnail(videoPath: string, thumbnailPath: string) {

@@ -1,11 +1,13 @@
 "use client";
 
-import { UploadCloud, X } from "lucide-react";
+import { Link, UploadCloud, X } from "lucide-react";
 import { useCallback, useState } from "react";
 
 type Props = {
   file: File | null;
   setFile: (file: File | null) => void;
+  videoUrl: string;
+  setVideoUrl: (url: string) => void;
 };
 
 const MAX_UPLOAD_MB = 500;
@@ -20,7 +22,12 @@ const allowed = [
   "audio/m4a"
 ];
 
-export default function Uploader({ file, setFile }: Props) {
+export default function Uploader({
+  file,
+  setFile,
+  videoUrl,
+  setVideoUrl
+}: Props) {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,7 +52,11 @@ export default function Uploader({ file, setFile }: Props) {
 
   const onPick = (candidate?: File) => {
     if (!candidate) return;
-    if (validate(candidate)) setFile(candidate);
+
+    if (validate(candidate)) {
+      setVideoUrl("");
+      setFile(candidate);
+    }
   };
 
   return (
@@ -66,34 +77,42 @@ export default function Uploader({ file, setFile }: Props) {
           : "border-slate-700 bg-slate-900/70"
       }`}
     >
+      <UploadCloud className="mx-auto mb-4 h-12 w-12 text-cyan-300" />
+
+      <h2 className="text-xl font-semibold">Upload or paste video URL</h2>
+
+      <p className="mt-2 text-sm text-slate-400">
+        Supports MP4, MOV, MP3, M4A, YouTube links, and direct video URLs. Max {MAX_UPLOAD_MB}MB for manual uploads.
+      </p>
+
+      <div className="mt-5">
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3">
+          <Link className="h-5 w-5 text-cyan-300" />
+          <input
+            value={videoUrl}
+            onChange={(e) => {
+              setFile(null);
+              setVideoUrl(e.target.value);
+              setError("");
+            }}
+            placeholder="Paste YouTube or video URL here"
+            className="w-full bg-transparent text-sm outline-none placeholder:text-slate-500"
+          />
+        </div>
+      </div>
+
       {!file ? (
-        <>
-          <UploadCloud className="mx-auto mb-4 h-12 w-12 text-cyan-300" />
-
-          <h2 className="text-xl font-semibold">
-            Upload podcast video/audio
-          </h2>
-
-          <p className="mt-2 text-sm text-slate-400">
-            Supports MP4, MOV, MP3, and M4A. Max {MAX_UPLOAD_MB}MB.
-          </p>
-
-          <p className="mt-2 text-xs text-slate-500">
-            YouTube URL import is coming soon. For now, upload the video file directly.
-          </p>
-
-          <label className="mt-5 inline-block cursor-pointer rounded-2xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300">
-            Choose file
-            <input
-              type="file"
-              className="hidden"
-              accept=".mp4,.mov,.mp3,.m4a,video/mp4,video/quicktime,audio/*"
-              onChange={(e) => onPick(e.target.files?.[0])}
-            />
-          </label>
-        </>
+        <label className="mt-5 inline-block cursor-pointer rounded-2xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300">
+          Choose file
+          <input
+            type="file"
+            className="hidden"
+            accept=".mp4,.mov,.mp3,.m4a,video/mp4,video/quicktime,audio/*"
+            onChange={(e) => onPick(e.target.files?.[0])}
+          />
+        </label>
       ) : (
-        <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-950 p-4 text-left">
+        <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl bg-slate-950 p-4 text-left">
           <div>
             <p className="font-semibold">{file.name}</p>
             <p className="text-sm text-slate-400">
@@ -109,6 +128,12 @@ export default function Uploader({ file, setFile }: Props) {
             <X className="h-5 w-5" />
           </button>
         </div>
+      )}
+
+      {videoUrl && !file && (
+        <p className="mt-4 text-sm text-cyan-200">
+          URL ready. Click Generate Clips to download and process it.
+        </p>
       )}
 
       {error && <p className="mt-4 text-sm text-red-300">{error}</p>}

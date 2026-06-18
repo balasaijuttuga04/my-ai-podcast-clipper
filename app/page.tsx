@@ -23,6 +23,7 @@ type CaptionStyle = "classic" | "bold-white" | "yellow-highlight";
 
 export default function HomePage() {
   const [file, setFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
   const [clipLength, setClipLength] = useState(45);
   const [numberOfClips, setNumberOfClips] = useState(3);
   const [step, setStep] = useState<ProgressStep>("idle");
@@ -33,8 +34,8 @@ export default function HomePage() {
     useState<CaptionStyle>("yellow-highlight");
 
   async function generateClips() {
-    if (!file) {
-      setError("Upload a podcast file first.");
+    if (!file && !videoUrl.trim()) {
+      setError("Upload a podcast file or paste a video URL first.");
       return;
     }
 
@@ -44,8 +45,35 @@ export default function HomePage() {
     try {
       setStep("uploading");
 
+      let workingFile = file;
+
+      if (!workingFile && videoUrl.trim()) {
+        const downloadRes = await fetch("/api/download-video", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ url: videoUrl.trim() })
+        });
+
+        if (!downloadRes.ok) {
+          const errorData = await downloadRes.json().catch(() => null);
+          throw new Error(errorData?.error || "Could not download this video URL.");
+        }
+
+        const blob = await downloadRes.blob();
+
+        workingFile = new File([blob], "downloaded-video.mp4", {
+          type: "video/mp4"
+        });
+      }
+
+      if (!workingFile) {
+        throw new Error("No valid video file found.");
+      }
+
       const transcribeForm = new FormData();
-      transcribeForm.append("file", file);
+      transcribeForm.append("file", workingFile);
 
       setStep("transcribing");
 
@@ -102,7 +130,7 @@ export default function HomePage() {
       }
 
       const uploadForm = new FormData();
-      uploadForm.append("file", file);
+      uploadForm.append("file", workingFile);
 
       const uploadResponse = await fetch("/api/upload-source", {
         method: "POST",
@@ -127,7 +155,7 @@ export default function HomePage() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          fileName: file.name,
+          fileName: workingFile.name,
           clipCount: highlights.length,
           status: "processing"
         })
@@ -243,7 +271,12 @@ export default function HomePage() {
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-6">
-            <Uploader file={file} setFile={setFile} />
+            <Uploader
+              file={file}
+              setFile={setFile}
+              videoUrl={videoUrl}
+              setVideoUrl={setVideoUrl}
+            />
 
             <div className="rounded-3xl bg-slate-900/70 p-6">
               <h2 className="text-xl font-semibold">Clip settings</h2>
@@ -329,7 +362,7 @@ export default function HomePage() {
 
               <button
                 onClick={generateClips}
-                disabled={!file || isGenerating}
+                disabled={(!file && !videoUrl.trim()) || isGenerating}
                 className="mt-6 w-full rounded-2xl bg-cyan-400 px-5 py-4 font-bold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Generate Clips

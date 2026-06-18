@@ -14,15 +14,11 @@ export async function POST(req: Request) {
     console.log("UPLOAD_SOURCE_START");
 
     const { userId } = await auth();
+const uploadUserId = userId || "public-user";
 
-    if (!userId) {
-      console.log("UPLOAD_SOURCE_UNAUTHORIZED");
-
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+if (!userId) {
+  console.log("UPLOAD_SOURCE_AUTH_FALLBACK");
+}
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -50,7 +46,7 @@ export async function POST(req: Request) {
 
     const dir = path.join(
       UPLOAD_ROOT,
-      userId,
+      uploadUserId,
       sourceId
     );
 

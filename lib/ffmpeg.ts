@@ -215,9 +215,18 @@ export function renderClip(params: {
     }
 
     command
-      .save(outputPath)
-      .on("end", () => resolve())
-      .on("error", reject);
+  .on("start", (cmd) => console.log("FFMPEG_START", cmd))
+  .on("progress", (progress) => console.log("FFMPEG_PROGRESS", progress))
+  .on("stderr", (line) => console.log("FFMPEG_STDERR", line))
+  .on("end", () => {
+    console.log("FFMPEG_END", outputPath);
+    resolve();
+  })
+  .on("error", (error) => {
+    console.error("FFMPEG_ERROR", error);
+    reject(error);
+  })
+  .save(outputPath);
   });
 }
 
