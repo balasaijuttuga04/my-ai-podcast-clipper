@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
+export const revalidate = 5;
+
 type ClipRow = {
   id: string;
   title: string;
