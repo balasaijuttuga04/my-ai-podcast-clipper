@@ -414,7 +414,7 @@ export default function HomePage() {
               setVideoUrl={setVideoUrl}
             />
 
-            <div className="rounded-3xl bg-slate-900/70 p-6">
+            <div className="rounded-2xl bg-slate-900/70 p-4 sm:rounded-3xl sm:p-6">
               <h2 className="text-xl font-semibold">Clip settings</h2>
 
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
