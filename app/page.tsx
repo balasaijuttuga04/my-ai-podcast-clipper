@@ -232,7 +232,7 @@ export default function HomePage() {
     step === "rendering";
 
   return (
-    <main className="min-h-screen bg-black px-5 py-8 text-white">
+    <main className="min-h-screen overflow-x-hidden bg-black px-4 sm:px-5 py-6 sm:py-8 text-white">
       <div className="absolute right-4 top-4 z-50 flex items-center gap-3">
         <Link
           href="/dashboard"

@@ -60,7 +60,7 @@ export default function Uploader({
   };
 
   return (
-    <div className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 to-slate-950 p-6 shadow-2xl">
+    <div className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 to-slate-950 p-4 sm:p-6 shadow-2xl overflow-hidden">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
@@ -87,7 +87,7 @@ export default function Uploader({
           setDragging(false);
           onPick(e.dataTransfer.files?.[0]);
         }}
-        className={`rounded-3xl border border-dashed p-8 text-center transition ${
+        className={`rounded-3xl border border-dashed p-4 sm:p-8 text-center transition ${
           dragging
             ? "border-cyan-300 bg-cyan-300/10"
             : "border-slate-700 bg-black/30 hover:border-slate-500"
@@ -117,7 +117,7 @@ export default function Uploader({
             />
           </label>
         ) : (
-          <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950 p-4 text-left">
+          <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950 p-4 text-left">
             <div className="min-w-0">
               <p className="truncate font-semibold text-white">{file.name}</p>
               <p className="text-sm text-slate-400">
@@ -144,7 +144,7 @@ export default function Uploader({
         <div className="h-px flex-1 bg-white/10" />
       </div>
 
-      <div className="flex items-center gap-3 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 transition focus-within:border-cyan-300">
+      <div className="flex w-full items-center gap-3 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 overflow-hidden">
         <Link className="h-5 w-5 shrink-0 text-cyan-300" />
 
         <input
