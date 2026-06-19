@@ -19,6 +19,7 @@ type VideoJobRow = {
   id: string;
   fileName: string;
   clipCount: number;
+  completedClips: number;
   status: string;
   createdAt: Date;
   clips: ClipRow[];
@@ -169,7 +170,11 @@ export default async function DashboardPage() {
                       </p>
 
                       <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-zinc-400">
-                        <span>{job.clips.length || job.clipCount} clips</span>
+                        <span>
+                          {job.status === "processing"
+                          ? `${job.completedClips}/${job.clipCount} clips completed`
+                          : `${job.clips.length || job.completedClips || job.clipCount} clips`}
+                        </span>
                         <span>•</span>
                         <span>{formatDateTime(job.createdAt)}</span>
                         <span
