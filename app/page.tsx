@@ -259,17 +259,36 @@ export default function HomePage() {
           </div>
 
           <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight md:text-6xl">
-            Turn long podcasts into captioned vertical shorts.
+            Turn Long Videos Into Viral Shorts in Minutes
           </h1>
 
           <p className="mt-4 max-w-2xl text-slate-300">
-            Upload a podcast or video file, detect strong moments with AI, and
-            generate captioned vertical shorts ready for TikTok, Reels, and
-            YouTube Shorts.
+            Upload a podcast, interview, webinar, or YouTube-style video.
+            CutMyShort finds the best moments, adds captions,
+            and renders vertical clips ready for TikTok, Instagram Reels, and YouTube Shorts.
           </p>
+          <div className="mt-8 flex flex-wrap gap-4">
+  <button
+    onClick={() =>
+      document
+        .getElementById("upload-section")
+        ?.scrollIntoView({ behavior: "smooth" })
+    }
+    className="rounded-2xl bg-cyan-400 px-6 py-3 font-bold text-slate-950 hover:bg-cyan-300"
+  >
+    Start Creating Shorts
+  </button>
+
+  <Link
+    href="/dashboard"
+    className="rounded-2xl border border-white/20 px-6 py-3 font-semibold text-white hover:bg-white/10"
+  >
+    View Dashboard
+  </Link>
+</div>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <div id="upload-section" className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-6">
             <Uploader
               file={file}
