@@ -289,6 +289,31 @@ export default function HomePage() {
         </section>
 
         <div id="upload-section" className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <section className="mb-8 grid gap-4 md:grid-cols-3">
+  <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+    <p className="text-sm font-semibold text-cyan-300">Step 1</p>
+    <h3 className="mt-3 text-xl font-bold">Upload Video</h3>
+    <p className="mt-2 text-sm text-slate-400">
+      Upload a podcast, webinar, interview, or paste a video URL.
+    </p>
+  </div>
+
+  <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+    <p className="text-sm font-semibold text-cyan-300">Step 2</p>
+    <h3 className="mt-3 text-xl font-bold">AI Finds Highlights</h3>
+    <p className="mt-2 text-sm text-slate-400">
+      AI analyzes transcripts and detects the most engaging moments.
+    </p>
+  </div>
+  <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
+    <p className="text-sm font-semibold text-cyan-300">Step 3</p>
+    <h3 className="mt-3 text-xl font-bold">Download Shorts</h3>
+    <p className="mt-2 text-sm text-slate-400">
+      Get captioned vertical clips ready for TikTok, Reels, and YouTube Shorts.
+    </p>
+  </div>
+</section>
+          
           <div className="space-y-6">
             <Uploader
               file={file}
