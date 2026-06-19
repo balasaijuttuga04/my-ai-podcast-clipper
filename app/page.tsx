@@ -50,15 +50,15 @@ export default function HomePage() {
       if (!workingFile && videoUrl.trim()) {
         const downloadRes = await fetch("/api/download-video", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: videoUrl.trim() })
         });
 
         if (!downloadRes.ok) {
           const errorData = await downloadRes.json().catch(() => null);
-          throw new Error(errorData?.error || "Could not download this video URL.");
+          throw new Error(
+            errorData?.error || "Could not download this video URL."
+          );
         }
 
         const blob = await downloadRes.blob();
@@ -103,9 +103,7 @@ export default function HomePage() {
 
       const highlightsRes = await fetch("/api/detect-highlights", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           transcript: transcription.text,
           segments: transcription.segments,
@@ -151,9 +149,7 @@ export default function HomePage() {
 
       const jobResponse = await fetch("/api/video-jobs", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fileName: workingFile.name,
           clipCount: highlights.length,
@@ -171,57 +167,56 @@ export default function HomePage() {
 
       const jobId = job.id;
 
-      setStep("clipping");
+      setStep("rendering");
 
-      const rendered: RenderedClip[] = [];
+      const rendered: RenderedClip[] = highlights.map((h, i) => ({
+        id: crypto.randomUUID(),
+        title: h.title || `Clip ${i + 1}`,
+        viralTitle: h.viralTitle,
+        caption: h.caption,
+        hashtags: h.hashtags,
+        start: h.start,
+        end: h.end,
+        reason: h.reason,
+        downloadUrl: ""
+      }));
 
-      for (let i = 0; i < highlights.length; i++) {
-        setStep("rendering");
+      setClips(rendered);
 
-        const h = highlights[i];
-        const renderForm = new FormData();
+      await Promise.all(
+        highlights.map(async (h, i) => {
+          const renderForm = new FormData();
 
-        renderForm.append("sourceId", sourceId);
-        renderForm.append("jobId", jobId);
-        renderForm.append("start", String(h.start));
-        renderForm.append("end", String(h.end));
-        renderForm.append("title", h.title || `Clip ${i + 1}`);
-        renderForm.append("words", JSON.stringify(transcription.words));
-        renderForm.append("cropMode", cropMode);
-        renderForm.append("captionStyle", captionStyle);
+          renderForm.append("sourceId", sourceId);
+          renderForm.append("jobId", jobId);
+          renderForm.append("start", String(h.start));
+          renderForm.append("end", String(h.end));
+          renderForm.append("title", h.title || `Clip ${i + 1}`);
+          renderForm.append("words", JSON.stringify(transcription.words));
+          renderForm.append("cropMode", cropMode);
+          renderForm.append("captionStyle", captionStyle);
+          renderForm.append("background", "true");
 
-        const renderRes = await fetch("/api/render-clip", {
-          method: "POST",
-          body: renderForm
-        });
+          const renderRes = await fetch("/api/render-clip", {
+            method: "POST",
+            body: renderForm
+          });
 
-        if (!renderRes.ok) {
-          const errorText = await renderRes.text();
-          console.error("RENDER_RESPONSE_TEXT", errorText);
+          if (!renderRes.ok) {
+            const errorText = await renderRes.text();
+            console.error("RENDER_RESPONSE_TEXT", errorText);
 
-          throw new Error(
-            "Rendering failed. Check the terminal for the real backend error."
-          );
-        }
-
-        const blob = await renderRes.blob();
-
-        rendered.push({
-          id: crypto.randomUUID(),
-          title: h.title || `Clip ${i + 1}`,
-          viralTitle: h.viralTitle,
-          caption: h.caption,
-          hashtags: h.hashtags,
-          start: h.start,
-          end: h.end,
-          reason: h.reason,
-          downloadUrl: URL.createObjectURL(blob)
-        });
-
-        setClips([...rendered]);
-      }
+            throw new Error(
+              "Rendering failed. Check the terminal for the real backend error."
+            );
+          }
+        })
+      );
 
       setStep("done");
+      setError(
+        "Rendering started in the background. Go to Dashboard and refresh to see clips as they finish."
+      );
     } catch (e: any) {
       console.error(e);
       setStep("error");
@@ -237,7 +232,7 @@ export default function HomePage() {
     step === "rendering";
 
   return (
-    <main className="min-h-screen px-5 py-8">
+    <main className="min-h-screen bg-black px-5 py-8 text-white">
       <div className="absolute right-4 top-4 z-50 flex items-center gap-3">
         <Link
           href="/dashboard"
@@ -258,62 +253,111 @@ export default function HomePage() {
             </span>
           </div>
 
-          <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight md:text-6xl">
+          <h1 className="mt-4 max-w-4xl text-4xl font-bold leading-tight md:text-6xl">
             Turn Long Videos Into Viral Shorts in Minutes
           </h1>
 
           <p className="mt-4 max-w-2xl text-slate-300">
             Upload a podcast, interview, webinar, or YouTube-style video.
-            CutMyShort finds the best moments, adds captions,
-            and renders vertical clips ready for TikTok, Instagram Reels, and YouTube Shorts.
+            CutMyShort finds the best moments, adds captions, and renders
+            vertical clips ready for TikTok, Instagram Reels, and YouTube Shorts.
           </p>
-          <div className="mt-8 flex flex-wrap gap-4">
-  <button
-    onClick={() =>
-      document
-        .getElementById("upload-section")
-        ?.scrollIntoView({ behavior: "smooth" })
-    }
-    className="rounded-2xl bg-cyan-400 px-6 py-3 font-bold text-slate-950 hover:bg-cyan-300"
-  >
-    Start Creating Shorts
-  </button>
 
-  <Link
-    href="/dashboard"
-    className="rounded-2xl border border-white/20 px-6 py-3 font-semibold text-white hover:bg-white/10"
-  >
-    View Dashboard
-  </Link>
-</div>
+          <div className="mt-8 flex flex-wrap gap-4">
+            <button
+              onClick={() =>
+                document
+                  .getElementById("upload-section")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="rounded-2xl bg-cyan-400 px-6 py-3 font-bold text-slate-950 hover:bg-cyan-300"
+            >
+              Start Creating Shorts
+            </button>
+
+            <Link
+              href="/dashboard"
+              className="rounded-2xl border border-white/20 px-6 py-3 font-semibold text-white hover:bg-white/10"
+            >
+              View Dashboard
+            </Link>
+          </div>
+        </section>
+
+        <section className="mb-8 grid gap-4 md:grid-cols-3">
+          {[
+            {
+              step: "Step 1",
+              title: "Upload Video",
+              description:
+                "Upload a podcast, webinar, interview, or paste a video URL."
+            },
+            {
+              step: "Step 2",
+              title: "AI Finds Highlights",
+              description:
+                "AI analyzes transcripts and detects the most engaging moments."
+            },
+            {
+              step: "Step 3",
+              title: "Download Shorts",
+              description:
+                "Get captioned vertical clips ready for TikTok, Reels, and YouTube Shorts."
+            }
+          ].map((item) => (
+            <div
+              key={item.step}
+              className="rounded-3xl border border-white/10 bg-slate-900/70 p-6"
+            >
+              <p className="text-sm font-semibold text-cyan-300">
+                {item.step}
+              </p>
+              <h3 className="mt-3 text-xl font-bold">{item.title}</h3>
+              <p className="mt-2 text-sm text-slate-400">
+                {item.description}
+              </p>
+            </div>
+          ))}
+        </section>
+
+        <section className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              title: "AI Highlight Detection",
+              description:
+                "Finds strong hooks, emotional moments, and high-retention segments."
+            },
+            {
+              title: "Auto Captions",
+              description:
+                "Burns clean, short-form subtitles directly into every clip."
+            },
+            {
+              title: "Background Rendering",
+              description:
+                "Start processing and continue working while clips render."
+            },
+            {
+              title: "Upload History",
+              description:
+                "Preview, download, and manage every generated short from your dashboard."
+            }
+          ].map((feature) => (
+            <div
+              key={feature.title}
+              className="rounded-3xl border border-white/10 bg-slate-900/60 p-6"
+            >
+              <h3 className="text-lg font-bold text-white">
+                {feature.title}
+              </h3>
+              <p className="mt-2 text-sm text-slate-400">
+                {feature.description}
+              </p>
+            </div>
+          ))}
         </section>
 
         <div id="upload-section" className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <section className="mb-8 grid gap-4 md:grid-cols-3">
-  <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-    <p className="text-sm font-semibold text-cyan-300">Step 1</p>
-    <h3 className="mt-3 text-xl font-bold">Upload Video</h3>
-    <p className="mt-2 text-sm text-slate-400">
-      Upload a podcast, webinar, interview, or paste a video URL.
-    </p>
-  </div>
-
-  <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-    <p className="text-sm font-semibold text-cyan-300">Step 2</p>
-    <h3 className="mt-3 text-xl font-bold">AI Finds Highlights</h3>
-    <p className="mt-2 text-sm text-slate-400">
-      AI analyzes transcripts and detects the most engaging moments.
-    </p>
-  </div>
-  <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-6">
-    <p className="text-sm font-semibold text-cyan-300">Step 3</p>
-    <h3 className="mt-3 text-xl font-bold">Download Shorts</h3>
-    <p className="mt-2 text-sm text-slate-400">
-      Get captioned vertical clips ready for TikTok, Reels, and YouTube Shorts.
-    </p>
-  </div>
-</section>
-          
           <div className="space-y-6">
             <Uploader
               file={file}
@@ -333,9 +377,7 @@ export default function HomePage() {
 
                   <select
                     value={clipLength}
-                    onChange={(e) =>
-                      setClipLength(Number(e.target.value))
-                    }
+                    onChange={(e) => setClipLength(Number(e.target.value))}
                     className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3"
                   >
                     <option value={30}>30 seconds</option>
@@ -371,9 +413,7 @@ export default function HomePage() {
 
                   <select
                     value={cropMode}
-                    onChange={(e) =>
-                      setCropMode(e.target.value as CropMode)
-                    }
+                    onChange={(e) => setCropMode(e.target.value as CropMode)}
                     className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3"
                   >
                     <option value="auto">Auto detect speaker</option>
@@ -397,9 +437,7 @@ export default function HomePage() {
                   >
                     <option value="classic">Classic</option>
                     <option value="bold-white">Bold White</option>
-                    <option value="yellow-highlight">
-                      Yellow Highlight
-                    </option>
+                    <option value="yellow-highlight">Yellow Highlight</option>
                   </select>
                 </label>
               </div>
