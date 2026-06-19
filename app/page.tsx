@@ -232,7 +232,7 @@ export default function HomePage() {
     step === "rendering";
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-black px-4 sm:px-5 py-6 sm:py-8 text-white">
+    <main className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-5 sm:py-8">
       <div className="absolute right-4 top-4 z-50 flex items-center gap-3">
         <Link
           href="/dashboard"
@@ -405,7 +405,7 @@ export default function HomePage() {
           ...
           </section>
 
-        <div id="upload-section" className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <div id="upload-section" className="grid w-full min-w-0 grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-6">
             <Uploader
               file={file}

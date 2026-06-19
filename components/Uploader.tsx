@@ -60,7 +60,7 @@ export default function Uploader({
   };
 
   return (
-    <div className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 to-slate-950 p-4 sm:p-6 shadow-2xl overflow-hidden">
+    <div className="w-full min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 to-slate-950 p-4 shadow-2xl sm:p-6">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
@@ -87,13 +87,13 @@ export default function Uploader({
           setDragging(false);
           onPick(e.dataTransfer.files?.[0]);
         }}
-        className={`rounded-3xl border border-dashed p-4 sm:p-8 text-center transition ${
+        className={`rounded-3xl border border-dashed p-4 text-center transition sm:p-8 ${
           dragging
             ? "border-cyan-300 bg-cyan-300/10"
             : "border-slate-700 bg-black/30 hover:border-slate-500"
         }`}
       >
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-cyan-400/10 text-cyan-300">
+        <div className="flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 transition focus-within:border-cyan-300">
           <UploadCloud className="h-8 w-8" />
         </div>
 
