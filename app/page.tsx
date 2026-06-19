@@ -356,6 +356,9 @@ export default function HomePage() {
             </div>
           ))}
         </section>
+        <section className="mt-16">
+          ...
+          </section>
 
         <div id="upload-section" className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-6">
@@ -465,10 +468,10 @@ export default function HomePage() {
               <p className="font-semibold text-white">How it works</p>
 
               <p className="mt-2">
-                Word-level timestamps attach start/end seconds to each word. The
-                renderer groups those words into short subtitle lines, writes an
-                ASS subtitle file, and FFmpeg burns it into the final vertical
-                MP4.
+                AI analyzes your content, finds viral moments,
+                adds captions automatically, 
+                and exports ready-to-post shorts for TikTok, Reels,
+                and YouTube Shorts.
               </p>
             </div>
           </aside>
