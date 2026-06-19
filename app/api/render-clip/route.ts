@@ -86,19 +86,14 @@ export async function POST(req: NextRequest) {
     const rawEnd = Number(formData.get("end"));
     const title = String(formData.get("title") || "Podcast Clip");
     const wordsRaw = String(formData.get("words") || "[]");
+    const background = String(formData.get("background") || "") === "true";
 
     if (!sourceId) {
-      return NextResponse.json(
-        { error: "Missing sourceId." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing sourceId." }, { status: 400 });
     }
 
     if (!jobId) {
-      return NextResponse.json(
-        { error: "Missing jobId." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing jobId." }, { status: 400 });
     }
 
     const existingJob = await prisma.videoJob.findFirst({
@@ -137,90 +132,144 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const inputPath = await getSourcePath(userId, sourceId);
-    const dir = await mkdtemp(path.join(os.tmpdir(), "cutmyshort-render-"));
+    const runRender = async () => {
+      const inputPath = await getSourcePath(userId, sourceId);
+      const dir = await mkdtemp(path.join(os.tmpdir(), "cutmyshort-render-"));
 
-    const words = JSON.parse(wordsRaw) as WordTimestamp[];
+      const words = JSON.parse(wordsRaw) as WordTimestamp[];
 
-    const subtitlePath = await createSubtitleFile({
-      dir,
-      words,
-      start,
-      end,
-      title,
-      captionStyle
-    });
-
-    const outputPath = path.join(dir, "clip.mp4");
-
-    const isVideo = /\.(mp4|mov|m4v|webm)$/i.test(inputPath);
-
-    console.log("RENDER_SETTINGS", {
-      isRailway: IS_RAILWAY,
-      sourceId,
-      jobId,
-      start,
-      end,
-      duration: end - start,
-      layoutMode,
-      cropMode,
-      isVideo,
-      backgroundVideo
-    });
-
-    await renderClip({
-      inputPath,
-      outputPath,
-      subtitlePath,
-      start,
-      end,
-      isVideo,
-      cropMode,
-      layoutMode,
-      backgroundVideo
-    });
-
-    const safeTitle = safeFileName(title);
-    const clipId = crypto.randomUUID();
-    const clipFileName = `${safeTitle}-${clipId}.mp4`;
-    const thumbnailFileName = `${safeTitle}-${clipId}.jpg`;
-
-    const clipDir = path.join(CLIP_ROOT, userId, jobId);
-    await mkdir(clipDir, { recursive: true });
-
-    const savedClipPath = path.join(clipDir, clipFileName);
-    const thumbnailPath = path.join(clipDir, thumbnailFileName);
-
-    await copyFile(outputPath, savedClipPath);
-
-    try {
-      await createThumbnail(savedClipPath, thumbnailPath);
-    } catch (thumbnailError) {
-      console.error("THUMBNAIL_ERROR", thumbnailError);
-    }
-
-    await prisma.clip.create({
-      data: {
-        id: clipId,
-        userId,
-        jobId,
-        title,
-        fileName: clipFileName,
-        filePath: savedClipPath,
-        thumbnailPath,
+      const subtitlePath = await createSubtitleFile({
+        dir,
+        words,
         start,
         end,
-      },
-    });
+        title,
+        captionStyle
+      });
 
-    await prisma.videoJob.update({
-      where: {
-        id: jobId,
-      },
-      data: {
-        status: "completed",
-      },
-    });
+      const outputPath = path.join(dir, "clip.mp4");
+
+      const isVideo = /\.(mp4|mov|m4v|webm)$/i.test(inputPath);
+
+      console.log("RENDER_SETTINGS", {
+        isRailway: IS_RAILWAY,
+        sourceId,
+        jobId,
+        start,
+        end,
+        duration: end - start,
+        layoutMode,
+        cropMode,
+        isVideo,
+        backgroundVideo,
+        background
+      });
+
+      await renderClip({
+        inputPath,
+        outputPath,
+        subtitlePath,
+        start,
+        end,
+        isVideo,
+        cropMode,
+        layoutMode,
+        backgroundVideo
+      });
+
+      const safeTitle = safeFileName(title);
+      const clipId = crypto.randomUUID();
+      const clipFileName = `${safeTitle}-${clipId}.mp4`;
+      const thumbnailFileName = `${safeTitle}-${clipId}.jpg`;
+
+      const clipDir = path.join(CLIP_ROOT, userId, jobId);
+      await mkdir(clipDir, { recursive: true });
+
+      const savedClipPath = path.join(clipDir, clipFileName);
+      const thumbnailPath = path.join(clipDir, thumbnailFileName);
+
+      await copyFile(outputPath, savedClipPath);
+
+      try {
+        await createThumbnail(savedClipPath, thumbnailPath);
+      } catch (thumbnailError) {
+        console.error("THUMBNAIL_ERROR", thumbnailError);
+      }
+
+      await prisma.clip.create({
+        data: {
+          id: clipId,
+          userId,
+          jobId,
+          title,
+          fileName: clipFileName,
+          filePath: savedClipPath,
+          thumbnailPath,
+          start,
+          end,
+        },
+      });
+
+      await prisma.videoJob.update({
+        where: {
+          id: jobId,
+        },
+        data: {
+          completedClips: {
+            increment: 1,
+          },
+        },
+      });
+
+      const updatedJob = await prisma.videoJob.findUnique({
+        where: {
+          id: jobId,
+        },
+      });
+
+      if (
+        updatedJob &&
+        updatedJob.completedClips >= updatedJob.clipCount
+      ) {
+        await prisma.videoJob.update({
+          where: {
+            id: jobId,
+          },
+          data: {
+            status: "completed",
+          },
+        });
+      }
+
+      return {
+        outputPath,
+        safeTitle
+      };
+    };
+
+    if (background) {
+      runRender().catch(async (error) => {
+        console.error("BACKGROUND_RENDER_ERROR", error);
+
+        await prisma.videoJob.update({
+          where: {
+            id: jobId,
+          },
+          data: {
+            status: "failed",
+          },
+        }).catch((dbError) => {
+          console.error("BACKGROUND_RENDER_STATUS_ERROR", dbError);
+        });
+      });
+
+      return NextResponse.json({
+        started: true,
+        jobId
+      });
+    }
+
+    const { outputPath, safeTitle } = await runRender();
 
     const output = await readFile(outputPath);
 

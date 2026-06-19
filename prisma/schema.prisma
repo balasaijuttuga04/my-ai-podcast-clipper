@@ -8,12 +8,13 @@ datasource db {
 }
 
 model VideoJob {
-  id        String   @id @default(cuid())
-  userId    String
-  fileName  String
-  clipCount Int
-  status    String   @default("completed")
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String
+  fileName       String
+  clipCount      Int
+  completedClips Int      @default(0)
+  status         String   @default("processing")
+  createdAt      DateTime @default(now())
 
   clips Clip[]
 }
