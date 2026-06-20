@@ -534,6 +534,92 @@ export default function HomePage() {
           </section>
         )}
       </div>
+      <section className="mt-20">
+  <div className="mx-auto max-w-4xl">
+    <h2 className="mb-10 text-center text-4xl font-bold">
+      Frequently Asked Questions
+    </h2>
+
+    <div className="space-y-4">
+      <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+        <h3 className="text-lg font-semibold">
+          What video formats are supported?
+        </h3>
+        <p className="mt-2 text-slate-400">
+          MP4, MOV, MP3 and M4A files are supported.
+        </p>
+      </div>
+
+      <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+        <h3 className="text-lg font-semibold">
+          Does CutMyShort automatically find highlights?
+        </h3>
+        <p className="mt-2 text-slate-400">
+          Yes. Our AI analyzes your content and identifies the most engaging moments for short-form clips.
+        </p>
+      </div>
+
+      <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+        <h3 className="text-lg font-semibold">
+          Can I upload YouTube videos?
+        </h3>
+        <p className="mt-2 text-slate-400">
+          Yes. Paste a supported video URL and CutMyShort will process it automatically.
+        </p>
+      </div>
+
+      <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+        <h3 className="text-lg font-semibold">
+          Who owns the generated clips?
+        </h3>
+        <p className="mt-2 text-slate-400">
+          You retain ownership of your uploaded content and generated clips.
+        </p>
+      </div>
+
+      <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+        <h3 className="text-lg font-semibold">
+          Is CutMyShort free to use?
+        </h3>
+        <p className="mt-2 text-slate-400">
+          Currently yes. Subscription plans will be introduced in the future.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+            <footer className="mt-24 border-t border-white/10 py-10">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-6 text-center text-sm text-slate-400 md:flex-row md:text-left">
+          <div>
+            <p className="font-semibold text-white">CutMyShort</p>
+            <p className="mt-1">
+              AI-powered podcast clipping and short-form content creation.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-6">
+            <a href="/privacy" className="hover:text-white">
+              Privacy
+            </a>
+
+            <a href="/terms" className="hover:text-white">
+              Terms
+            </a>
+
+            <a href="/refund-policy" className="hover:text-white">
+              Refund Policy
+            </a>
+
+            <a href="/contact" className="hover:text-white">
+              Contact
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-6 text-center text-xs text-slate-500">
+          © 2026 CutMyShort. All rights reserved.
+        </div>
+      </footer>
     </main>
   );
 }
