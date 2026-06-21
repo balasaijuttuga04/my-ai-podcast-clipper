@@ -56,7 +56,12 @@ async function getSourcePath(userId: string, sourceId: string) {
 }
 
 async function createThumbnail(videoPath: string, thumbnailPath: string) {
-  await execFileAsync("ffmpeg", [
+  const ffmpegCommand =
+    process.platform === "win32"
+      ? "C:\\Users\\juttu\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-8.1.1-full_build\\bin\\ffmpeg.exe"
+      : "ffmpeg";
+
+  await execFileAsync(ffmpegCommand, [
     "-y",
     "-ss",
     "00:00:01",

@@ -3,8 +3,12 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Podcast Clipper",
-  description: "Generate captioned vertical shorts from long podcast videos.",
+  title: "CutMyShort - Turn Long Videos Into Viral Shorts",
+  description:
+    "AI-powered podcast clipper that turns podcasts, interviews, webinars, and long videos into viral short-form clips.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

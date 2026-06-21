@@ -1,5 +1,5 @@
 "use client";
-
+import Image from "next/image";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { useState } from "react";
@@ -168,20 +168,8 @@ export default function HomePage() {
       const jobId = job.id;
 
       setStep("rendering");
+      setClips([]);
 
-      const rendered: RenderedClip[] = highlights.map((h, i) => ({
-        id: crypto.randomUUID(),
-        title: h.title || `Clip ${i + 1}`,
-        viralTitle: h.viralTitle,
-        caption: h.caption,
-        hashtags: h.hashtags,
-        start: h.start,
-        end: h.end,
-        reason: h.reason,
-        downloadUrl: ""
-      }));
-
-      setClips(rendered);
 
       await Promise.all(
         highlights.map(async (h, i) => {
@@ -212,10 +200,37 @@ export default function HomePage() {
           }
         })
       );
+            let attempts = 0;
+
+      while (attempts < 20) {
+        const jobStatusRes = await fetch(`/api/video-jobs/${jobId}`);
+
+        if (jobStatusRes.ok) {
+          const { job } = await jobStatusRes.json();
+
+          if (job?.clips?.length > 0) {
+            setClips(
+              job.clips.map((clip: any) => ({
+                id: clip.id,
+                title: clip.title,
+                start: clip.start,
+                end: clip.end,
+                reason: "Rendered clip ready to preview and download.",
+                downloadUrl: `/api/clips/${clip.id}/download`
+              }))
+            );
+
+            break;
+          }
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        attempts += 1;
+      }
 
       setStep("done");
       setError(
-        "Rendering started in the background. Go to Dashboard and refresh to see clips as they finish."
+        "Rendering complete. You can preview and download your clips below."
       );
     } catch (e: any) {
       console.error(e);
@@ -231,38 +246,48 @@ export default function HomePage() {
     step === "clipping" ||
     step === "rendering";
 
+    const isDone = step === "done" && clips.length > 0;
+
   return (
-    <main className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-5 sm:py-8">
-      <div className="absolute right-4 top-4 z-50 flex items-center gap-3">
-        <Link
-          href="/dashboard"
-          className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
-        >
-          Dashboard
+    <main className="min-h-screen overflow-x-hidden bg-black px-4 py-3 text-white sm:px-5 sm:py-4">
+      <div className="mb-6 flex items-center justify-between px-6">
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/logo-white.png"
+            alt="CutMyShort"
+            width={320}
+            height={100}
+            priority
+            className="h-20 w-auto object-contain"
+          />
         </Link>
 
-        <UserButton />
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard"
+            className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white hover:bg-white/10"
+          >
+            Dashboard
+          </Link>
+
+          <UserButton />
+        </div>
       </div>
 
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1700px]">
         <section className="relative mb-8 overflow-hidden rounded-[2rem] border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-8 shadow-2xl">
   <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
   <div className="absolute -bottom-24 left-20 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
 
   <div className="relative grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
     <div>
-      <div className="flex items-center gap-3 text-cyan-300">
-        <Sparkles className="h-6 w-6" />
-        <span className="text-sm font-semibold uppercase tracking-[0.3em]">
-          CutMyShort
-        </span>
-      </div>
+      
 
-      <h1 className="mt-5 max-w-4xl text-4xl font-bold leading-tight md:text-6xl">
+      <h1 className="mt-5 max-w-5xl text-4xl font-bold leading-tight md:text-7xl">
         Turn Long Videos Into Viral Shorts in Minutes
-      </h1>
+        </h1>
 
-      <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
+      <p className="mt-5 max-w-4xl text-xl leading-9 text-slate-300">
         Upload a podcast, interview, webinar, or YouTube-style video.
         CutMyShort finds the best moments, adds captions, and renders
         vertical clips ready for TikTok, Instagram Reels, and YouTube Shorts.
@@ -289,123 +314,100 @@ export default function HomePage() {
       </div>
     </div>
 
+    
+
     <div className="relative hidden lg:block">
-      <div className="absolute -left-8 top-10 h-28 w-28 rounded-3xl bg-cyan-400/20 blur-2xl" />
+  <div className="absolute -left-8 top-10 h-28 w-28 rounded-3xl bg-cyan-400/20 blur-2xl" />
 
-      <div className="relative mx-auto w-[280px] rotate-[-6deg] rounded-[2rem] border border-white/10 bg-slate-900 p-4 shadow-2xl shadow-cyan-500/10">
-        <div className="aspect-[9/16] overflow-hidden rounded-[1.5rem] border border-white/10 bg-gradient-to-b from-slate-800 to-black p-4">
-          <div className="h-32 rounded-2xl bg-gradient-to-br from-cyan-300/30 to-blue-500/20" />
+  <div className="relative mx-auto w-[280px] rotate-[-6deg] rounded-[2rem] border border-white/10 bg-slate-900 p-4 shadow-2xl shadow-cyan-500/10">
+      <div className="relative aspect-[9/16] overflow-hidden rounded-[1.5rem] border border-white/10 bg-gradient-to-b from-slate-800 to-black p-4">
+  <div className="absolute inset-4 rounded-2xl bg-gradient-to-br from-cyan-300/20 to-blue-500/20" />
 
-          <div className="mt-6 space-y-3">
-            <div className="h-3 w-3/4 rounded-full bg-white/80" />
-            <div className="h-3 w-1/2 rounded-full bg-cyan-300/80" />
-            <div className="h-3 w-2/3 rounded-full bg-white/50" />
-          </div>
+  <div className="absolute left-6 right-6 top-8 rounded-2xl bg-black/40 p-4">
+    <p className="text-xs font-semibold text-slate-300">Long video</p>
+    <div className="mt-3 h-20 rounded-xl bg-slate-700/80" />
+  </div>
 
-          <div className="mt-8 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3">
-            <p className="text-xs font-semibold text-cyan-200">
-              AI Highlight Found
-            </p>
-            <p className="mt-1 text-[11px] text-slate-300">
-              00:13:42 - Best viral moment
-            </p>
-          </div>
+  <div className="absolute left-6 right-6 top-40 space-y-3">
+    <div className="h-3 w-3/4 rounded-full bg-white/80" />
+    <div className="h-3 w-1/2 rounded-full bg-cyan-300/80" />
+    <div className="h-3 w-2/3 rounded-full bg-white/50" />
+  </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-2">
-            <div className="h-20 rounded-2xl bg-white/10" />
-            <div className="h-20 rounded-2xl bg-cyan-300/20" />
-          </div>
-        </div>
-      </div>
+  <div className="scan-line absolute left-6 right-6 top-36 h-1 rounded-full bg-cyan-300 shadow-[0_0_20px_rgba(103,232,249,0.9)]" />
 
-      <div className="absolute -right-4 bottom-8 rotate-6 rounded-2xl border border-white/10 bg-black/60 px-4 py-3 shadow-xl backdrop-blur">
-        <p className="text-xs text-slate-400">Rendering</p>
-        <p className="text-sm font-bold text-cyan-300">3 clips ready</p>
-      </div>
+<div className="absolute left-6 right-6 top-52 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3">
+  <p className="text-xs font-bold text-cyan-200">AI Processing</p>
+  <p className="mt-1 text-[11px] text-slate-300">
+    Finding viral moments...
+  </p>
+</div>
+
+  <div className="short-card short-card-1 absolute bottom-24 left-5 h-28 w-20 rounded-xl bg-cyan-300/20 p-2">
+    <div className="h-14 rounded-lg bg-white/10" />
+    <div className="mt-2 h-2 rounded-full bg-cyan-300" />
+    <div className="mt-1 h-2 w-2/3 rounded-full bg-white/50" />
+  </div>
+
+  <div className="short-card short-card-2 absolute bottom-20 left-28 h-28 w-20 rounded-xl bg-purple-300/20 p-2">
+    <div className="h-14 rounded-lg bg-white/10" />
+    <div className="mt-2 h-2 rounded-full bg-purple-300" />
+    <div className="mt-1 h-2 w-2/3 rounded-full bg-white/50" />
+  </div>
+
+  <div className="short-card short-card-3 absolute bottom-16 right-5 h-28 w-20 rounded-xl bg-fuchsia-300/20 p-2">
+    <div className="h-14 rounded-lg bg-white/10" />
+    <div className="mt-2 h-2 rounded-full bg-fuchsia-300" />
+    <div className="mt-1 h-2 w-2/3 rounded-full bg-white/50" />
+  </div>
     </div>
   </div>
+
+    <div className="absolute -right-4 bottom-8 rotate-6 rounded-2xl border border-white/10 bg-black/60 px-4 py-3 shadow-xl backdrop-blur">
+    
+  </div>
+</div>
+</div>
 </section>
 
-        <section className="mb-8 grid gap-4 md:grid-cols-3">
-          {[
-            {
-              step: "Step 1",
-              title: "Upload Video",
-              description:
-                "Upload a podcast, webinar, interview, or paste a video URL."
-            },
-            {
-              step: "Step 2",
-              title: "AI Finds Highlights",
-              description:
-                "AI analyzes transcripts and detects the most engaging moments."
-            },
-            {
-              step: "Step 3",
-              title: "Download Shorts",
-              description:
-                "Get captioned vertical clips ready for TikTok, Reels, and YouTube Shorts."
-            }
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="group rounded-3xl border border-white/10 bg-gradient-to-br
-              from-slate-900 to-slate-950 p-6 shadow-xl transition-all duration-300
-              hover:-translate-y-2 hover:rotate-1 hover:shadow-cyan-500/20"
-            >
-              <div className="mb-4 inline-flex rounded-2xl bg-cyan-400/20 px-4 py-2
-              font-bold text-cyan-300 shadow-lg shadow-cyan-500/20">
-              {item.step}
-</div>
-              <h3 className="mt-3 text-xl font-bold">{item.title}</h3>
-              <p className="mt-2 text-sm text-slate-400">
-                {item.description}
-              </p>
-            </div>
-          ))}
-        </section>
+<section className="mb-10 grid gap-5 md:grid-cols-3">
+  {[
+    {
+      step: "Step 1",
+      title: "Upload Video",
+      description: "Upload a podcast, webinar, interview, or paste a video URL."
+    },
+    {
+      step: "Step 2",
+      title: "AI Finds Highlights",
+      description: "AI analyzes transcripts and detects the most engaging moments."
+    },
+    {
+      step: "Step 3",
+      title: "Download Shorts",
+      description: "Get captioned vertical clips ready for TikTok, Reels, and YouTube Shorts."
+    }
+  ].map((item, index) => (
+    <div
+      key={item.step}
+      className="animate-float rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 to-slate-950 p-7 shadow-xl shadow-cyan-500/5 transition-all duration-300 hover:-translate-y-2 hover:shadow-cyan-500/20"
+      style={{
+        animationDelay: `${index * 0.25}s`
+      }}
+    >
+      <div className="mb-8 inline-flex rounded-2xl bg-cyan-400/20 px-5 py-3 font-bold text-cyan-300 shadow-lg shadow-cyan-500/20">
+        {item.step}
+      </div>
 
-        <section className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            {
-              title: "AI Highlight Detection",
-              description:
-                "Finds strong hooks, emotional moments, and high-retention segments."
-            },
-            {
-              title: "Auto Captions",
-              description:
-                "Burns clean, short-form subtitles directly into every clip."
-            },
-            {
-              title: "Background Rendering",
-              description:
-                "Start processing and continue working while clips render."
-            },
-            {
-              title: "Upload History",
-              description:
-                "Preview, download, and manage every generated short from your dashboard."
-            }
-          ].map((feature) => (
-            <div
-              key={feature.title}
-              className="rounded-3xl border border-white/10 bg-slate-900/60 p-6"
-            >
-              <h3 className="text-lg font-bold text-white">
-                {feature.title}
-              </h3>
-              <p className="mt-2 text-sm text-slate-400">
-                {feature.description}
-              </p>
-            </div>
-          ))}
-        </section>
-        <section className="mt-16">
-          ...
-          </section>
+      <h3 className="text-2xl font-bold text-white">{item.title}</h3>
 
-        <div id="upload-section" className="grid w-full min-w-0 grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <p className="mt-3 text-base leading-7 text-slate-400">
+        {item.description}
+      </p>
+    </div>
+  ))}
+</section>
+        <div id="upload-section" className="mx-auto grid max-w-[1500px] gap-7 lg:grid-cols-[1fr_430px]">
           <div className="space-y-6">
             <Uploader
               file={file}
@@ -498,15 +500,21 @@ export default function HomePage() {
                 Generate Clips
               </button>
 
-              {error && (
-                <p className="mt-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
-                  {error}
-                </p>
-              )}
+              {isDone && (
+  <div className="success-pop mt-4 rounded-2xl border border-emerald-400/40 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-200">
+    ✓ {clips.length} Short{clips.length > 1 ? "s" : ""} Generated Successfully
+  </div>
+)}
+
+{error && !isDone && (
+  <p className="mt-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
+    {error}
+  </p>
+)}
             </div>
           </div>
 
-          <aside className="space-y-6">
+          <aside className="space-y-7">
             <ProgressIndicator step={step} />
 
             <div className="rounded-3xl bg-slate-900/70 p-5 text-sm text-slate-300">
@@ -534,6 +542,9 @@ export default function HomePage() {
           </section>
         )}
       </div>
+
+
+
       <section className="mt-20">
   <div className="mx-auto max-w-4xl">
     <h2 className="mb-10 text-center text-4xl font-bold">
@@ -588,38 +599,53 @@ export default function HomePage() {
     </div>
   </div>
 </section>
-            <footer className="mt-24 border-t border-white/10 py-10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-6 text-center text-sm text-slate-400 md:flex-row md:text-left">
-          <div>
-            <p className="font-semibold text-white">CutMyShort</p>
-            <p className="mt-1">
-              AI-powered podcast clipping and short-form content creation.
-            </p>
-          </div>
+            <footer className="mt-32 border-t border-white/10 py-16">
+  <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-10 px-8 text-center md:flex-row md:items-start md:text-left">
+    <div className="max-w-md">
+      <p className="text-3xl font-bold text-white">
+        CutMyShort
+      </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-6">
-            <a href="/privacy" className="hover:text-white">
-              Privacy
-            </a>
+      <p className="mt-4 text-lg leading-8 text-slate-400">
+        AI-powered podcast clipping and short-form content creation.
+      </p>
+    </div>
 
-            <a href="/terms" className="hover:text-white">
-              Terms
-            </a>
+    <div className="flex flex-wrap items-center justify-center gap-8 text-lg">
+      <a
+        href="/privacy"
+        className="text-slate-400 transition hover:text-cyan-300"
+      >
+        Privacy
+      </a>
 
-            <a href="/refund-policy" className="hover:text-white">
-              Refund Policy
-            </a>
+      <a
+        href="/terms"
+        className="text-slate-400 transition hover:text-cyan-300"
+      >
+        Terms
+      </a>
 
-            <a href="/contact" className="hover:text-white">
-              Contact
-            </a>
-          </div>
-        </div>
+      <a
+        href="/refund-policy"
+        className="text-slate-400 transition hover:text-cyan-300"
+      >
+        Refund Policy
+      </a>
 
-        <div className="mt-6 text-center text-xs text-slate-500">
-          © 2026 CutMyShort. All rights reserved.
-        </div>
-      </footer>
+      <a
+        href="/contact"
+        className="text-slate-400 transition hover:text-cyan-300"
+      >
+        Contact
+      </a>
+    </div>
+  </div>
+
+  <div className="mt-12 text-center text-base text-slate-500">
+    © 2026 CutMyShort. All rights reserved.
+  </div>
+</footer>
     </main>
   );
 }
