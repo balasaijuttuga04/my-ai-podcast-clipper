@@ -1,4 +1,5 @@
 "use client";
+import { uploadVideoInChunks } from "@/lib/uploads/chunkUploader";
 import Image from "next/image";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
@@ -127,25 +128,14 @@ export default function HomePage() {
         );
       }
 
-      const uploadForm = new FormData();
-      uploadForm.append("file", workingFile);
-
-      const uploadResponse = await fetch("/api/upload-source", {
-        method: "POST",
-        body: uploadForm
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Upload failed.");
-      }
-
-      const { sourceId } = (await uploadResponse.json()) as {
-        sourceId: string;
-      };
-
-      if (!sourceId) {
-        throw new Error("Upload failed: missing sourceId.");
-      }
+      const sourceId = await uploadVideoInChunks(
+        workingFile,
+        (progress) => {
+          console.log(
+            `Uploading ${progress.uploadedChunks}/${progress.totalChunks} (${progress.percent}%)`
+          );
+        }
+      );
 
       const jobResponse = await fetch("/api/video-jobs", {
         method: "POST",
@@ -501,16 +491,15 @@ export default function HomePage() {
               </button>
 
               {isDone && (
-  <div className="success-pop mt-4 rounded-2xl border border-emerald-400/40 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-200">
-    ✓ {clips.length} Short{clips.length > 1 ? "s" : ""} Generated Successfully
-  </div>
-)}
-
-{error && !isDone && (
-  <p className="mt-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
-    {error}
-  </p>
-)}
+                <div className="success-pop mt-4 rounded-2xl border border-emerald-400/40 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-200">
+                  ✓ {clips.length} Short{clips.length > 1 ? "s" : ""} Generated Successfully
+                  </div>
+                )}
+                {error && !isDone && (
+                  <p className="mt-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
+                    {error}
+                    </p>
+                  )}
             </div>
           </div>
 
